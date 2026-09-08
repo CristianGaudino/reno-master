@@ -1,0 +1,94 @@
+@import 'tailwindcss';
+
+/*
+ * The palette is deliberately quiet. The canvas is the content, objects are
+ * colour-coded by category, and warnings use saturated red and amber — so the
+ * chrome around them has to stay out of the way or nothing reads as urgent.
+ */
+@theme {
+  --color-ink: oklch(0.22 0.012 250);
+  --color-ink-muted: oklch(0.52 0.014 250);
+  --color-ink-faint: oklch(0.68 0.012 250);
+
+  --color-surface: oklch(0.99 0.002 250);
+  --color-surface-raised: oklch(1 0 0);
+  --color-surface-sunken: oklch(0.965 0.004 250);
+  --color-border: oklch(0.9 0.006 250);
+  --color-border-strong: oklch(0.82 0.008 250);
+
+  --color-accent: oklch(0.55 0.13 235);
+  --color-accent-soft: oklch(0.95 0.03 235);
+
+  --color-danger: oklch(0.57 0.19 25);
+  --color-danger-soft: oklch(0.96 0.03 25);
+  --color-warn: oklch(0.7 0.15 70);
+  --color-warn-soft: oklch(0.96 0.04 80);
+  --color-good: oklch(0.62 0.13 155);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* The editor manages its own scrolling; the page itself never scrolls. */
+    overscroll-behavior: none;
+  }
+
+  /* Numeric fields read as measurements, so they get tabular figures — columns
+     of dimensions that jitter as digits change are hard to compare. */
+  input[type='text'],
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .panel {
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+
+  .field-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+}
+
+/*
+ * The canvas must not pan the page when a drag runs off the edge of an object,
+ * and text selection during a drag makes the whole thing feel broken.
+ */
+.editor-canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.editor-canvas text {
+  user-select: none;
+  pointer-events: none;
+}
