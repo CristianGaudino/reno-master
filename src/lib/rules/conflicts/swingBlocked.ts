@@ -1,5 +1,5 @@
 import { RULE_IDS } from '../../constants'
-import type { Finding, Rule, SceneContext, VanObject } from '../../definitions'
+import type { Finding, Rule, SceneContext } from '../../definitions'
 import { boxOf, evaluateSwing, type SwingCandidate } from '../../geometry'
 import { findingId } from '../engine'
 
@@ -24,10 +24,14 @@ export const swingBlockedRule: Rule = {
   evaluate(ctx) {
     const findings: Finding[] = []
 
+    // Built once rather than per articulated object: a van with a dozen doors
+    // was constructing every other object's bounding box a dozen times over.
+    const allCandidates = allSwingCandidates(ctx)
+
     for (const object of ctx.objects) {
       if (object.kind !== 'articulated' || !object.articulation) continue
 
-      const candidates = candidatesFor(ctx, object)
+      const candidates = allCandidates.filter((candidate) => candidate.id !== object.id)
       const result = evaluateSwing(object.articulation, candidates)
       if (!result.blocked) continue
 
@@ -68,22 +72,21 @@ export const swingBlockedRule: Rule = {
 }
 
 /**
- * What a given swing can collide with.
+ * Everything a swing could collide with.
  *
- * The object's own body is excluded — a fridge door hinged on the fridge is not
- * blocked by the fridge — as are loose items, which can simply be moved out of
- * the way before opening a door.
+ * Loose items are excluded — they can be moved out of the way before opening a
+ * door — as are apertures, which are voids rather than obstructions. The
+ * object's own body is filtered out per swing by the caller: a fridge door
+ * hinged on the fridge is not blocked by the fridge.
  */
-function candidatesFor(ctx: SceneContext, subject: VanObject): SwingCandidate[] {
+function allSwingCandidates(ctx: SceneContext): SwingCandidate[] {
   const candidates: SwingCandidate[] = []
 
   for (const object of ctx.obstructing) {
-    if (object.id === subject.id) continue
     candidates.push({ id: object.id, name: object.name, box: boxOf(object) })
   }
 
   for (const obstacle of ctx.van.obstacles) {
-    // Apertures are voids; a door swinging into a doorway is fine.
     if (obstacle.kind === 'aperture_side' || obstacle.kind === 'aperture_rear') continue
     if (obstacle.kind === 'mount_point') continue
     candidates.push({ id: obstacle.id, name: obstacle.name, box: boxOf(obstacle) })

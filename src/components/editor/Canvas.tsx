@@ -104,32 +104,41 @@ export function Canvas({ findings }: { findings: Finding[] }) {
     return new Set(finding?.objectIds ?? [])
   }, [findings, hoveredFindingId])
 
+  /**
+   * Reads the scene from the store rather than from this render.
+   *
+   * The identity of this callback decides whether the memoised shapes can skip
+   * a render. Closing over `objects` and `selectedIds` would give it a new
+   * identity on every frame of a drag, re-rendering every object in the van to
+   * move one of them.
+   */
   const beginMove = useCallback(
     (event: React.PointerEvent, id: string) => {
       if (event.button !== 0 || event.shiftKey) return
       event.stopPropagation()
 
+      const state = useEditorStore.getState()
       const additive = event.metaKey || event.ctrlKey
-      const alreadySelected = selectedIds.includes(id)
+      const alreadySelected = state.selectedIds.includes(id)
       const ids = additive
         ? alreadySelected
-          ? selectedIds
-          : [...selectedIds, id]
+          ? state.selectedIds
+          : [...state.selectedIds, id]
         : alreadySelected
-          ? selectedIds
+          ? state.selectedIds
           : [id]
 
-      if (!alreadySelected || additive) select(ids)
+      if (!alreadySelected || additive) state.select(ids)
       ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 
       const origins = new Map<string, Vec3>()
-      for (const object of objects) {
+      for (const object of state.objects) {
         if (ids.includes(object.id)) origins.set(object.id, { ...object.position })
       }
 
       setDrag({ kind: 'move', ids, startModel: toModel(event), origins })
     },
-    [objects, select, selectedIds, toModel],
+    [toModel],
   )
 
   const beginResize = useCallback(
@@ -138,7 +147,9 @@ export function Canvas({ findings }: { findings: Finding[] }) {
       event.stopPropagation()
       ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 
-      const object = objects.find((candidate) => candidate.id === id)
+      const object = useEditorStore
+        .getState()
+        .objects.find((candidate) => candidate.id === id)
       if (!object) return
 
       setDrag({
@@ -149,7 +160,7 @@ export function Canvas({ findings }: { findings: Finding[] }) {
         origin: { position: { ...object.position }, size: { ...object.size } },
       })
     },
-    [objects, toModel],
+    [toModel],
   )
 
   const onPointerMove = useCallback(

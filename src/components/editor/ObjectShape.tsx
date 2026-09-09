@@ -6,6 +6,7 @@
  * extent. Both come from `projectObject`, so the two can never disagree.
  */
 
+import { memo } from 'react'
 import { GHOST_OPACITY } from '../../lib/config'
 import type { Size3, VanObject, ViewMode } from '../../lib/definitions'
 import { isAboveCut, projectObject, swingArcPath } from '../../lib/geometry'
@@ -27,7 +28,15 @@ interface ObjectShapeProps {
   onPointerDown(event: React.PointerEvent, id: string): void
 }
 
-export function ObjectShape({
+/**
+ * Memoised.
+ *
+ * Dragging one object replaces only that object in the store array, so every
+ * other shape receives identical props and can skip re-rendering entirely. That
+ * only holds while the callbacks passed in are stable — see `Canvas`, where the
+ * pointer handlers read the scene from the store rather than closing over it.
+ */
+export const ObjectShape = memo(function ObjectShape({
   object,
   view,
   interior,
@@ -117,4 +126,4 @@ export function ObjectShape({
       )}
     </g>
   )
-}
+})

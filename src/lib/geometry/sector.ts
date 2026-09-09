@@ -22,7 +22,7 @@ import type {
   Size3,
   Vec3,
 } from '../definitions'
-import { boxCorners, toRadians, type Box3 } from './obb'
+import { boxCorners, boxExtent, toRadians, type Box3 } from './obb'
 import { polygonsOverlap } from './sat'
 
 /** One sampled position of a swinging leaf. */
@@ -132,6 +132,30 @@ export interface Blocker {
   angle: Degrees
 }
 
+/**
+ * How far from its hinge a leaf can possibly reach.
+ *
+ * The leaf sweeps inside a circle of this radius, so anything further away
+ * cannot be touched at any angle. Used to reject candidates before the
+ * per-pose work — exact rather than approximate, since nothing outside the
+ * circle can be reached however finely the sweep is sampled.
+ */
+export function swingReach(articulation: Articulation): Mm {
+  const extent =
+    articulation.kind === 'slide'
+      ? articulation.leafLength + (articulation.slideDistance ?? articulation.leafLength)
+      : articulation.leafLength
+  return Math.hypot(extent, articulation.leafThickness)
+}
+
+/** Distance from a point to an axis-aligned box; zero when inside it. */
+function distanceToBox(point: Point2, box: Box3): Mm {
+  const extent = boxExtent(box)
+  const dx = Math.max(extent.minX - point.x, 0, point.x - extent.maxX)
+  const dy = Math.max(extent.minY - point.y, 0, point.y - extent.maxY)
+  return Math.hypot(dx, dy)
+}
+
 export interface SwingResult {
   blocked: boolean
   /** How far the leaf can travel before touching anything, in degrees. */
@@ -162,11 +186,26 @@ export function evaluateSwing(
   candidates: SwingCandidate[],
   stepDegrees: number = SWING_SAMPLE_STEP_DEG,
 ): SwingResult {
-  const relevant = candidates.filter(
-    (candidate) =>
-      candidate.box.zMax > articulation.zRange.min &&
-      candidate.box.zMin < articulation.zRange.max,
-  )
+  // Two cheap rejections before any pose work: candidates that do not share the
+  // leaf's height, and candidates further from the hinge than the leaf can
+  // reach. At a hundred objects this is the difference between testing every
+  // object at every sampled angle and testing the two or three actually near
+  // the door.
+  const reach = swingReach(articulation)
+  const relevant = candidates.filter((candidate) => {
+    if (candidate.box.zMax <= articulation.zRange.min) return false
+    if (candidate.box.zMin >= articulation.zRange.max) return false
+    return distanceToBox(articulation.hinge, candidate.box) <= reach
+  })
+
+  if (relevant.length === 0) {
+    return {
+      blocked: false,
+      maxOpenAngle: Math.abs(articulation.sweepAngle),
+      requestedAngle: Math.abs(articulation.sweepAngle),
+      blockers: [],
+    }
+  }
 
   const poses = posesFor(articulation, stepDegrees)
   const blockers = new Map<string, Blocker>()
@@ -174,9 +213,14 @@ export function evaluateSwing(
   let foundFirstBlock = false
 
   for (const pose of poses) {
+    // Every candidate is already a known blocker: further poses cannot change
+    // the answer.
+    if (blockers.size === relevant.length && foundFirstBlock) break
+
     const travelled = Math.abs(pose.angle - articulation.startAngle)
 
     for (const candidate of relevant) {
+      if (blockers.has(candidate.id)) continue
       const result = polygonsOverlap(pose.polygon, boxCorners(candidate.box))
       if (!result.overlapping) continue
 

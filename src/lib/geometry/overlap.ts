@@ -34,6 +34,22 @@ export function intersects3D(
     return { intersecting: false, horizontal: 0, vertical }
   }
 
+  // Cheap axis-aligned rejection before the exact test. Most pairs in a van are
+  // nowhere near each other, and this settles them with four comparisons
+  // instead of projecting eight corners onto eight axes. Boxes that survive it
+  // still go through the full separating-axis test, so nothing is approximated —
+  // this only skips work that could not have changed the answer.
+  const extentA = boxExtent(a)
+  const extentB = boxExtent(b)
+  if (
+    extentA.maxX - extentB.minX <= tolerance ||
+    extentB.maxX - extentA.minX <= tolerance ||
+    extentA.maxY - extentB.minY <= tolerance ||
+    extentB.maxY - extentA.minY <= tolerance
+  ) {
+    return { intersecting: false, horizontal: 0, vertical }
+  }
+
   const horizontal = footprintsOverlap(a.footprint, b.footprint, tolerance)
   if (!horizontal.overlapping) {
     return { intersecting: false, horizontal: 0, vertical }
