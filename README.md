@@ -34,7 +34,7 @@ build.
 | Frontend | Vite 8 + React 19 SPA, TypeScript strict, React Router 8 |
 | Editor state | Zustand, with command-pattern undo/redo |
 | Server state | TanStack Query |
-| API | Hono, one Vercel serverless function (`api/index.ts`) |
+| API | Hono, one Vercel serverless function |
 | Database | Neon Postgres via Drizzle ORM (HTTP driver) |
 | Styling | Tailwind v4 |
 | Tests | Vitest over the geometry and rules layers |
@@ -84,12 +84,33 @@ src/lib/
 src/components/  ui primitives, editor, projects
 src/store/       editorStore, history, localStore (IndexedDB), syncEngine
 server/          Hono app — the only importer of data.ts and actions/
-api/index.ts     Vercel entry; committed, because functions are discovered
-                 from the repository rather than from build output
+server/vercel.ts the serverless adapter
+api/index.js     generated from it by `npm run build:api` — and committed
 ```
 
 Everything under `server/` uses relative imports rather than the `@/` alias:
 Vercel compiles the entry itself and does not reliably honour tsconfig paths.
+
+### Deploying
+
+Two things about `api/index.js` are load-bearing, and both were learned the hard
+way:
+
+- **It is committed.** Vercel discovers functions from the files in the
+  repository, not from build output. Generating it during the build left nothing
+  to discover, and the deployment came up with a working front end and every
+  `/api/*` request falling through to the SPA shell.
+- **It is bundled.** Vercel compiles a TypeScript entry but does not bundle it,
+  and this is an ESM package, so relative imports arrive extensionless and Node
+  cannot resolve them. Bundling leaves only bare package specifiers.
+
+CI rebuilds it and fails if the committed copy has drifted, and `npm run
+smoke:api` drives the adapter over real HTTP — that adapter is the one code path
+production runs and development does not, which is exactly where a deployment
+breaks while every local check passes.
+
+Vercel needs `DATABASE_URL` set. The build succeeds without it, because the
+connection is lazy; every request then fails at runtime.
 
 **Server-only code is enforced, not just documented.** An ESLint rule fails the
 build if anything under `components/`, `routes/` or `store/` imports `lib/data`,
