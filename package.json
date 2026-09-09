@@ -19,7 +19,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "bench": "tsx scripts/bench.ts"
+    "bench": "tsx scripts/bench.ts",
+    "smoke:api": "tsx scripts/smoke-api.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",

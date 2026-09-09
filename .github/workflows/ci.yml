@@ -69,6 +69,9 @@ jobs:
           fi
           npm run db:push -- --force
           npm run db:seed
+          # The serverless adapter is the one path production runs and
+          # development does not, so it gets checked before the browser tests.
+          npm run smoke:api
           npm run test:e2e
 
       - uses: actions/upload-artifact@v4
