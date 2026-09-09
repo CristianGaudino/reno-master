@@ -3,6 +3,7 @@
  * status.
  */
 
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { VIEW_LABELS } from '../../lib/geometry'
 import type { UnitSystem, ViewMode } from '../../lib/definitions'
@@ -13,6 +14,7 @@ import { Button, SegmentedControl } from '../ui'
 import { useEditorStore } from '../../store/editorStore'
 import { LayerToggles } from './SystemRuns'
 import { SyncIndicator } from './SyncIndicator'
+import { VanDimensionsModal } from './VanDimensionsModal'
 
 const VIEW_OPTIONS: Array<{ value: ViewMode; label: string }> = [
   { value: 'top', label: 'Top' },
@@ -28,6 +30,7 @@ export function EditorToolbar({ unitSystem }: { unitSystem: UnitSystem }) {
   const undo = useEditorStore((state) => state.undo)
   const redo = useEditorStore((state) => state.redo)
   const history = useEditorStore((state) => state.history)
+  const [vanModalOpen, setVanModalOpen] = useState(false)
 
   return (
     <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-raised px-3 py-2">
@@ -43,7 +46,19 @@ export function EditorToolbar({ unitSystem }: { unitSystem: UnitSystem }) {
         <h1 className="truncate text-sm font-semibold text-ink">
           {project?.name ?? 'Loading…'}
         </h1>
-        <p className="truncate text-xs text-ink-muted">{van?.label}</p>
+        <button
+          type="button"
+          onClick={() => setVanModalOpen(true)}
+          className="flex max-w-full items-center gap-1.5 truncate text-xs text-ink-muted hover:text-ink"
+          title="Correct the van dimensions for this project"
+        >
+          <span className="truncate">{van?.label}</span>
+          {van?.hasOverrides && (
+            <span className="shrink-0 rounded bg-surface-sunken px-1 text-[0.625rem]">
+              edited
+            </span>
+          )}
+        </button>
       </div>
 
       <SegmentedControl
@@ -80,6 +95,12 @@ export function EditorToolbar({ unitSystem }: { unitSystem: UnitSystem }) {
         {VIEW_LABELS[view]}
         {view === 'top' && <CutSummary unitSystem={unitSystem} />}
       </p>
+
+      <VanDimensionsModal
+        open={vanModalOpen}
+        onClose={() => setVanModalOpen(false)}
+        unitSystem={unitSystem}
+      />
     </header>
   )
 }

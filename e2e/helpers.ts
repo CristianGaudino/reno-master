@@ -62,3 +62,18 @@ export async function fetchProject(page: Page, id: string) {
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
+
+/**
+ * Scope a locator to one panel.
+ *
+ * Several panels legitimately mention the same thing — a custom piece names its
+ * origin both in the inspector and in the items list — so assertions have to say
+ * which one they mean rather than relying on there being only one.
+ */
+export function panel(page: Page, title: string) {
+  // Not an exact match: some panel headings carry a count or a total alongside
+  // the name, which is a legitimate thing for them to do.
+  return page.locator('section.panel').filter({
+    has: page.getByRole('heading', { name: title }),
+  })
+}

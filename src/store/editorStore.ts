@@ -30,6 +30,7 @@ import type {
 } from '../lib/definitions'
 import { articulationFromTemplate, transformArticulation } from '../lib/geometry'
 import { resolveVan } from '../lib/resolveVan'
+import { massAfterResize } from '../lib/customPieces'
 import { ALL_LAYERS } from '../lib/constants'
 import { instantiateTemplate, type Template } from '../lib/templates'
 import {
@@ -65,6 +66,15 @@ interface EditorState {
   visibleLayers: RuleLayer[]
   /** Draw inferred cable and pipe runs for the visible system layers. */
   showRuns: boolean
+  /**
+   * Manufactured items the user has explicitly unlocked for resizing.
+   *
+   * Deliberately not persisted. Once they actually change a dimension the piece
+   * reads as custom on its own and stays unlocked; until then, re-locking on
+   * reload is the right default — the lock exists to stop an accidental drag
+   * redefining an appliance.
+   */
+  unlockedIds: string[]
 
   // History ----------------------------------------------------------------
   history: History
@@ -100,6 +110,7 @@ interface EditorState {
   setHoveredFinding(id: string | null): void
   toggleLayer(layer: RuleLayer): void
   setShowRuns(show: boolean): void
+  unlockResize(id: string): void
   applyTemplate(template: Template): void
 
   addFromCatalog(item: CatalogItem, position: Vec3): string
@@ -238,6 +249,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     hoveredFindingId: null,
     visibleLayers: [...ALL_LAYERS],
     showRuns: true,
+    unlockedIds: [],
 
     history: emptyHistory,
     lastCoalesceKey: undefined,
@@ -340,6 +352,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
       set({ showRuns })
     },
 
+    unlockResize(id) {
+      const current = get().unlockedIds
+      if (current.includes(id)) return
+      set({ unlockedIds: [...current, id] })
+    },
+
     /**
      * Load a template into the project.
      *
@@ -387,6 +405,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         connections: [],
         zIndex: state.objects.length,
         notes: null,
+        catalogSlug: item.slug,
       }
 
       commit([...state.objects, object], [id], undefined, { select: [id] })
@@ -493,6 +512,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
           ...object,
           size: nextSize,
           position: nextPosition,
+          // A tank made bigger holds more water, and water is usually the
+          // heaviest thing in the van — leaving the old figure would quietly
+          // put the payload numbers out.
+          mass: massAfterResize(object, nextSize),
           articulation: object.articulation
             ? transformArticulation(
                 object.articulation,

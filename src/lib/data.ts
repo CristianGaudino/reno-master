@@ -14,6 +14,7 @@ import { db } from './db/client'
 import {
   projectObjects,
   projects,
+  userCatalogItems,
   userSettings,
   users,
   vanModels,
@@ -22,13 +23,20 @@ import {
 import type {
   Project,
   ProjectSummary,
+  UserCatalogItem,
   UserSettings,
   VanModel,
   VanObject,
   VanObstacle,
 } from './definitions'
 import { DEFAULT_GRID_MM } from './config'
-import { rowToObject, rowToProject, rowToVanModel, rowToVanObstacle } from './db/mappers'
+import {
+  rowToObject,
+  rowToProject,
+  rowToUserCatalogItem,
+  rowToVanModel,
+  rowToVanObstacle,
+} from './db/mappers'
 
 // ---------------------------------------------------------------------------
 // Users and settings
@@ -192,4 +200,18 @@ export async function getVanModel(modelId: string): Promise<VanModel | null> {
     .where(eq(vanObstacles.vanModelId, modelId))
 
   return rowToVanModel(row, obstacleRows.map(rowToVanObstacle))
+}
+
+// ---------------------------------------------------------------------------
+// Personal catalog
+// ---------------------------------------------------------------------------
+
+export async function listUserCatalogItems(userId: string): Promise<UserCatalogItem[]> {
+  const rows = await db()
+    .select()
+    .from(userCatalogItems)
+    .where(eq(userCatalogItems.userId, userId))
+    .orderBy(desc(userCatalogItems.createdAt))
+
+  return rows.map(rowToUserCatalogItem)
 }

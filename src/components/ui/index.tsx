@@ -13,6 +13,7 @@ import type { Confidence } from '../../lib/definitions'
 
 export { Button } from './Button'
 export { NumberField } from './NumberField'
+export { Modal } from './Modal'
 
 // ---------------------------------------------------------------------------
 

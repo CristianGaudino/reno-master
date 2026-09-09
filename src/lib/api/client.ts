@@ -10,6 +10,7 @@
 import { hc } from 'hono/client'
 import type { AppType } from '../../../server/app'
 import type {
+  CreateCatalogItemInput,
   CreateProjectInput,
   Project,
   ProjectSummary,
@@ -17,6 +18,7 @@ import type {
   SyncResponse,
   UpdateProjectInput,
   UpdateSettingsInput,
+  UserCatalogItem,
   UserSettings,
   VanModel,
   VanObject,
@@ -135,6 +137,29 @@ export function beaconSync(id: string, request: SyncRequest): boolean {
 
   const blob = new Blob([JSON.stringify(request)], { type: 'application/json' })
   return navigator.sendBeacon(`/api/projects/${id}/sync`, blob)
+}
+
+// ---------------------------------------------------------------------------
+// Personal catalog
+// ---------------------------------------------------------------------------
+
+export async function fetchCatalogItems(): Promise<UserCatalogItem[]> {
+  const response = await client.api.catalog.$get()
+  const body = await unwrap<{ items: UserCatalogItem[] }>(response)
+  return body.items
+}
+
+export async function createCatalogItem(
+  input: CreateCatalogItemInput,
+): Promise<UserCatalogItem> {
+  const response = await client.api.catalog.$post({ json: input })
+  const body = await unwrap<{ item: UserCatalogItem }>(response)
+  return body.item
+}
+
+export async function removeCatalogItem(id: string): Promise<void> {
+  const response = await client.api.catalog[':id'].$delete({ param: { id } })
+  await unwrap<{ ok: true }>(response)
 }
 
 // ---------------------------------------------------------------------------

@@ -53,6 +53,7 @@ const object = (overrides: Partial<VanObject> = {}): VanObject => {
     connections: [],
     zIndex: 0,
     notes: null,
+    catalogSlug: null,
     ...overrides,
   }
 }

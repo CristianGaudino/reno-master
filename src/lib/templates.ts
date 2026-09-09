@@ -341,6 +341,9 @@ function toObject(
     connections: [],
     zIndex: index,
     notes: null,
+    // Template pieces are ordinary catalog items, so resizing one makes it
+    // custom in exactly the same way as one placed by hand.
+    catalogSlug: catalog.slug,
   }
 }
 

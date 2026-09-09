@@ -21,6 +21,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 
 import {
+  createCatalogItemSchema,
   createProjectSchema,
   syncRequestSchema,
   updateProjectSchema,
@@ -31,6 +32,7 @@ import {
   getProjectObjects,
   getUserSettings,
   listProjects,
+  listUserCatalogItems,
   listVanModels,
 } from '@/lib/data'
 import {
@@ -41,6 +43,7 @@ import {
 } from '@/lib/actions/projects'
 import { applySync } from '@/lib/actions/sync'
 import { updateUserSettings } from '@/lib/actions/settings'
+import { createCatalogItem, deleteCatalogItem } from '@/lib/actions/catalog'
 import { auth, type AuthVariables } from './middleware/auth'
 
 const app = new Hono<{ Variables: AuthVariables }>().basePath('/api')
@@ -71,6 +74,25 @@ export const routes = app
   .use('/projects/*', auth)
   .use('/projects', auth)
   .use('/settings', auth)
+  .use('/catalog', auth)
+  .use('/catalog/*', auth)
+
+  /** Pieces the user has saved for reuse across their own projects. */
+  .get('/catalog', async (c) => {
+    const items = await listUserCatalogItems(c.get('userId'))
+    return c.json({ items })
+  })
+
+  .post('/catalog', zValidator('json', createCatalogItemSchema), async (c) => {
+    const item = await createCatalogItem(c.get('userId'), c.req.valid('json'))
+    return c.json({ item }, 201)
+  })
+
+  .delete('/catalog/:id', zValidator('param', uuidParam), async (c) => {
+    const deleted = await deleteCatalogItem(c.get('userId'), c.req.valid('param').id)
+    if (!deleted) throw new HTTPException(404, { message: 'Piece not found' })
+    return c.json({ ok: true })
+  })
 
   .get('/settings', async (c) => {
     const settings = await getUserSettings(c.get('userId'))

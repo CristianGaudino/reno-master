@@ -9,6 +9,13 @@ import type { ObjectKind, UnitSystem, VanObject } from '../../lib/definitions'
 import { CATEGORY_LABELS } from '../../lib/constants'
 import { OBJECT_CATEGORIES } from '../../lib/definitions'
 import { formatMass, massUnitLabel, parseMass } from '../../lib/units'
+import {
+  describeOrigin,
+  isResizable,
+  pieceOrigin,
+  volumeLitres,
+} from '../../lib/customPieces'
+import { useSaveCatalogItem } from '../../lib/api/queries'
 import { Button, EmptyState, NumberField, Panel, Select, TextInput } from '../ui'
 import { useEditorStore } from '../../store/editorStore'
 
@@ -34,6 +41,9 @@ export function Inspector({
   const rotateObject = useEditorStore((state) => state.rotateObject)
   const deleteObjects = useEditorStore((state) => state.deleteObjects)
   const duplicateObjects = useEditorStore((state) => state.duplicateObjects)
+  const unlockedIds = useEditorStore((state) => state.unlockedIds)
+  const unlockResize = useEditorStore((state) => state.unlockResize)
+  const saveItem = useSaveCatalogItem()
 
   const selected = objects.filter((object) => selectedIds.includes(object.id))
 
@@ -65,8 +75,28 @@ export function Inspector({
   const object = selected[0]!
   const patch = (changes: Partial<VanObject>) => patchObjects([object.id], () => changes)
 
+  const { original, isCustom } = pieceOrigin(object)
+  const unlocked = unlockedIds.includes(object.id)
+  const canResize = isResizable(object) || unlocked
+
   return (
     <Panel title="Properties" className={className} bodyClassName="space-y-4 p-3">
+      {isCustom && (
+        <p
+          className="rounded-md bg-accent-soft px-2.5 py-2 text-xs leading-snug text-ink"
+          title={describeOrigin(object) ?? undefined}
+        >
+          <strong className="font-medium">Custom piece</strong>
+          {original ? (
+            <> — based on {original.name}.</>
+          ) : (
+            <> — built from scratch.</>
+          )}{' '}
+          It is saved with this project. Save it to your pieces to reuse it
+          elsewhere.
+        </p>
+      )}
+
       <TextInput
         label="Name"
         value={object.name}
@@ -106,6 +136,7 @@ export function Inspector({
             value={object.size.w}
             unitSystem={unitSystem}
             min={10}
+            disabled={!canResize}
             onChange={(w) => resizeObject(object.id, { w })}
           />
           <NumberField
@@ -113,6 +144,7 @@ export function Inspector({
             value={object.size.d}
             unitSystem={unitSystem}
             min={10}
+            disabled={!canResize}
             onChange={(d) => resizeObject(object.id, { d })}
           />
           <NumberField
@@ -120,9 +152,35 @@ export function Inspector({
             value={object.size.h}
             unitSystem={unitSystem}
             min={10}
+            disabled={!canResize}
             onChange={(h) => resizeObject(object.id, { h })}
           />
         </div>
+
+        {!canResize && (
+          <div className="rounded-md bg-surface-sunken px-2.5 py-2">
+            <p className="text-xs leading-snug text-ink-muted">
+              {original?.name} is a manufactured item — these are the product
+              dimensions. If yours is a different model, unlock it and it becomes
+              your own custom piece.
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="mt-1.5"
+              onClick={() => unlockResize(object.id)}
+            >
+              Use different dimensions
+            </Button>
+          </div>
+        )}
+
+        {canResize && original?.massModel === 'water' && (
+          <p className="text-[0.6875rem] leading-snug text-ink-faint">
+            Mass follows the volume — {Math.round(volumeLitres(object.size))} litres
+            full.
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="space-y-2">
@@ -255,13 +313,38 @@ export function Inspector({
         </div>
       )}
 
-      <div className="flex gap-2 border-t border-border pt-3">
+      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         <Button size="sm" onClick={() => duplicateObjects([object.id])}>
           Duplicate
         </Button>
         <Button size="sm" variant="danger" onClick={() => deleteObjects([object.id])}>
           Delete
         </Button>
+        {isCustom && (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={saveItem.isPending}
+            onClick={() =>
+              saveItem.mutate({
+                name: object.name,
+                category: object.category,
+                kind: object.kind,
+                size: { ...object.size },
+                mass: object.mass,
+                cost: object.cost,
+                color: object.color,
+                basedOnSlug: object.catalogSlug,
+              })
+            }
+          >
+            {saveItem.isPending
+              ? 'Saving…'
+              : saveItem.isSuccess
+                ? 'Saved to your pieces'
+                : 'Save to my pieces'}
+          </Button>
+        )}
       </div>
     </Panel>
   )

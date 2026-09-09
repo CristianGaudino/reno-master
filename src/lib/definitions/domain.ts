@@ -145,6 +145,16 @@ export interface VanObject {
   zIndex: number
   /** Free-text note surfaced in the inspector. */
   notes: string | null
+  /**
+   * The catalog entry this came from, if any.
+   *
+   * Kept even after the object has been resized, so a modified piece can say
+   * what it started life as. Whether it counts as *custom* is derived by
+   * comparing it against that entry rather than stored — a stored flag would
+   * only ever drift out of step with the dimensions it describes, and resizing
+   * something back to standard should make it standard again.
+   */
+  catalogSlug: string | null
 }
 
 /** A catalog entry: a template from which a `VanObject` is created. */
@@ -179,6 +189,25 @@ export interface CatalogItem {
     zOffsetMax: Mm
   }
   /**
+   * Whether the user may change its dimensions.
+   *
+   * A galley is built to fit and should be resized freely. A fridge is a
+   * manufactured product with dimensions that are what they are — editing it
+   * describes a different appliance, which is a deliberate act rather than a
+   * drag. Those are locked, with an explicit way to unlock.
+   *
+   * Defaults to resizable; only manufactured goods opt out.
+   */
+  resizable?: boolean
+  /**
+   * How mass responds to a resize.
+   *
+   * `water` recomputes from volume — a tank made twice the size holds twice the
+   * water, and since water is almost always the heaviest thing in a build,
+   * leaving the old figure behind would quietly wreck the payload numbers.
+   */
+  massModel?: 'water'
+  /**
    * Where this thing normally lives.
    *
    * An overhead locker dropped on the floor is not wrong so much as silly, and
@@ -187,6 +216,26 @@ export interface CatalogItem {
    */
   mount?: 'floor' | 'worktop' | 'overhead' | 'roof'
   description?: string
+}
+
+/**
+ * A piece the user saved to their own catalog.
+ *
+ * Shaped so it can be turned into a `CatalogItem` and placed exactly like a
+ * built-in one — the placement code should not care where a piece came from.
+ */
+export interface UserCatalogItem {
+  id: string
+  name: string
+  category: ObjectCategory
+  kind: ObjectKind
+  size: Size3
+  mass: Grams
+  cost: number
+  color: string
+  /** Catalog entry it was derived from, if any. */
+  basedOnSlug: string | null
+  createdAt: string
 }
 
 // ---------------------------------------------------------------------------

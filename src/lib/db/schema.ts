@@ -160,6 +160,43 @@ export const vanObstacles = pgTable(
   (table) => [index('van_obstacles_model_idx').on(table.vanModelId)],
 )
 
+/**
+ * Pieces the user has saved for reuse across their own projects.
+ *
+ * Separate from the shared catalog on purpose: one builder's cut-down galley is
+ * not a product anyone else should see, and the shared catalog stays something
+ * we curate rather than a dumping ground.
+ *
+ * Articulation is not stored. It is inherited from `based_on_slug` when there is
+ * one, which keeps a saved fridge-with-a-door working without having to convert
+ * a placed object's absolute hinge back into a relative template.
+ */
+export const userCatalogItems = pgTable(
+  'user_catalog_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    name: text('name').notNull(),
+    category: objectCategoryEnum('category').notNull(),
+    kind: objectKindEnum('kind').notNull(),
+
+    sizeW: integer('size_w').notNull(),
+    sizeD: integer('size_d').notNull(),
+    sizeH: integer('size_h').notNull(),
+    mass: integer('mass').notNull().default(0),
+    cost: integer('cost').notNull().default(0),
+    color: text('color').notNull(),
+
+    /** Catalog entry it was derived from, if any. */
+    basedOnSlug: text('based_on_slug'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('user_catalog_user_idx').on(table.userId)],
+)
+
 // ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------
@@ -251,6 +288,8 @@ export const projectObjects = pgTable(
 
     zIndex: integer('z_index').notNull().default(0),
     notes: text('notes'),
+    /** Catalog entry this was created from; null for a from-scratch object. */
+    catalogSlug: text('catalog_slug'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('project_objects_project_idx').on(table.projectId)],
@@ -262,6 +301,7 @@ export const projectObjects = pgTable(
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   projects: many(projects),
+  catalogItems: many(userCatalogItems),
   settings: one(userSettings, {
     fields: [users.id],
     references: [userSettings.userId],

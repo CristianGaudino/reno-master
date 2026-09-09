@@ -27,9 +27,25 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  /*
+   * The behaviours under test — custom pieces, sync, van corrections — are the
+   * same whatever the screen is; only the way you reach them differs. So the
+   * bulk of the suite runs once, on a desktop viewport, and the mobile project
+   * covers what is genuinely different: the tabbed layout and a touch-sized
+   * canvas. Running everything twice would double the runtime for almost no
+   * extra signal.
+   */
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'desktop',
+      testIgnore: 'mobile/**',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } },
+    },
+    {
+      name: 'mobile',
+      testMatch: 'mobile/**/*.spec.ts',
+      use: { ...devices['Pixel 7'] },
+    },
   ],
 
   // Boots Vite and the API together, exactly as development does.

@@ -8,12 +8,25 @@
  */
 
 import type { InferSelectModel } from 'drizzle-orm'
-import type { Project, VanModel, VanObject, VanObstacle } from '../definitions'
-import type { projectObjects, projects, vanModels, vanObstacles } from './schema'
+import type {
+  Project,
+  UserCatalogItem,
+  VanModel,
+  VanObject,
+  VanObstacle,
+} from '../definitions'
+import type {
+  projectObjects,
+  projects,
+  userCatalogItems,
+  vanModels,
+  vanObstacles,
+} from './schema'
 
 type ProjectRow = InferSelectModel<typeof projects>
 type ObjectRow = InferSelectModel<typeof projectObjects>
 type VanModelRow = InferSelectModel<typeof vanModels>
+type UserCatalogRow = InferSelectModel<typeof userCatalogItems>
 type ObstacleRow = InferSelectModel<typeof vanObstacles>
 
 export function rowToProject(row: ProjectRow): Project {
@@ -53,6 +66,7 @@ export function rowToObject(row: ObjectRow): VanObject {
     connections: row.connections ?? [],
     zIndex: row.zIndex,
     notes: row.notes,
+    catalogSlug: row.catalogSlug,
   }
 }
 
@@ -78,6 +92,7 @@ export function objectToRow(object: VanObject) {
     connections: object.connections,
     zIndex: object.zIndex,
     notes: object.notes,
+    catalogSlug: object.catalogSlug,
     updatedAt: new Date(),
   }
 }
@@ -114,5 +129,20 @@ export function rowToVanModel(row: VanModelRow, obstacles: VanObstacle[]): VanMo
     confidence: row.confidence,
     sourceNote: row.sourceNote,
     obstacles,
+  }
+}
+
+export function rowToUserCatalogItem(row: UserCatalogRow): UserCatalogItem {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    kind: row.kind,
+    size: { w: row.sizeW, d: row.sizeD, h: row.sizeH },
+    mass: row.mass,
+    cost: row.cost,
+    color: row.color,
+    basedOnSlug: row.basedOnSlug,
+    createdAt: row.createdAt.toISOString(),
   }
 }

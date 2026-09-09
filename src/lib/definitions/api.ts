@@ -53,6 +53,7 @@ export const vanObjectSchema = z.object({
   connections: z.array(connectionPointSchema).default([]),
   zIndex: z.number().int(),
   notes: z.string().max(2000).nullable(),
+  catalogSlug: z.string().max(80).nullable().default(null),
 })
 
 export const taperPointSchema = z.object({
@@ -127,6 +128,17 @@ export const syncConflictSchema = z.object({
   serverRevision: z.number().int(),
 })
 
+export const createCatalogItemSchema = z.object({
+  name: z.string().min(1).max(120),
+  category: z.enum(OBJECT_CATEGORIES),
+  kind: z.enum(['fixed', 'articulated', 'loose']),
+  size: size3Schema,
+  mass: grams,
+  cost: z.number().finite().nonnegative(),
+  color: z.string().max(32),
+  basedOnSlug: z.string().max(80).nullable().optional(),
+})
+
 export const updateSettingsSchema = z.object({
   heightMm: mm.positive().nullable().optional(),
   unitSystem: z.enum(['metric', 'imperial']).optional(),
@@ -143,3 +155,4 @@ export type SyncOk = z.infer<typeof syncOkSchema>
 export type SyncConflict = z.infer<typeof syncConflictSchema>
 export type SyncResponse = SyncOk | SyncConflict
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>
+export type CreateCatalogItemInput = z.infer<typeof createCatalogItemSchema>

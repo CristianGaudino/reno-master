@@ -14,6 +14,7 @@ import { chooseScene, clearScene, type LocalScene } from '../store/localStore'
 import { loadLocalScene, useEditorStore } from '../store/editorStore'
 import { flush, startSyncEngine } from '../store/syncEngine'
 import { useFindings } from '../hooks/useFindings'
+import { useMediaQuery, XL_QUERY } from '../hooks/useMediaQuery'
 import { Canvas } from '../components/editor/Canvas'
 import { CatalogPanel } from '../components/editor/CatalogPanel'
 import { EditorToolbar, HeightSlider, LayerBar } from '../components/editor/EditorToolbar'
@@ -21,11 +22,12 @@ import { Inspector } from '../components/editor/Inspector'
 import { WarningsPanel } from '../components/editor/WarningsPanel'
 import { WeightPanel } from '../components/editor/WeightPanel'
 import { TemplatePanel } from '../components/editor/TemplatePanel'
+import { ProjectItemsPanel } from '../components/editor/ProjectItemsPanel'
 import { ConflictBanner } from '../components/editor/SyncIndicator'
 import { Button, Spinner } from '../components/ui'
 import { cn } from '../lib/cn'
 
-type MobileTab = 'catalog' | 'properties' | 'checks' | 'templates'
+type MobileTab = 'catalog' | 'templates' | 'items' | 'properties' | 'checks'
 
 export function EditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -195,6 +197,7 @@ export function EditorPage() {
   }, [hydrate, id, localSceneQuery, projectQuery, settingsQuery.data, vanModel])
 
   const unitSystem = settings.unitSystem
+  const wide = useMediaQuery(XL_QUERY)
 
   if (projectQuery.isLoading || settingsQuery.isLoading) {
     return (
@@ -230,11 +233,13 @@ export function EditorPage() {
       )}
 
       <div className="flex min-h-0 flex-1">
-        {/* Catalog: a fixed rail on desktop, a tab sheet on phones. */}
-        <aside className="hidden w-64 shrink-0 flex-col gap-2 overflow-y-auto border-r border-border p-2 lg:flex">
-          <CatalogPanel unitSystem={unitSystem} className="min-h-0 flex-1" />
-          <TemplatePanel className="shrink-0" />
-        </aside>
+        {/* Catalog: a fixed rail on wide screens, a tab below the canvas otherwise. */}
+        {wide && (
+          <aside className="flex w-64 shrink-0 flex-col gap-2 overflow-y-auto border-r border-border p-2">
+            <CatalogPanel unitSystem={unitSystem} className="min-h-0 flex-1" />
+            <TemplatePanel className="shrink-0" />
+          </aside>
+        )}
 
         <main className="flex min-w-0 flex-1 flex-col">
           <Canvas findings={report.findings} />
@@ -243,63 +248,73 @@ export function EditorPage() {
         </main>
 
         {/*
-          Each panel sizes to its own content and the column scrolls as a whole.
-          Making them flex children instead clipped the inspector part-way down
-          its fields, which is where the numbers actually get typed.
+          One layout is rendered, not both. Rendering the panels twice and hiding
+          a copy with CSS doubles the store subscriptions and leaves two fields
+          with the same label in the page.
         */}
-        <aside className="hidden w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-border p-2 xl:flex">
-          <Inspector unitSystem={unitSystem} className="shrink-0" />
-          <WeightPanel unitSystem={unitSystem} className="shrink-0" />
-          <WarningsPanel report={report} unitSystem={unitSystem} className="shrink-0" />
-        </aside>
+        {wide && (
+          <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-border p-2">
+            <Inspector unitSystem={unitSystem} className="shrink-0" />
+            <WeightPanel unitSystem={unitSystem} className="shrink-0" />
+            <ProjectItemsPanel unitSystem={unitSystem} className="shrink-0" />
+            <WarningsPanel report={report} unitSystem={unitSystem} className="shrink-0" />
+          </aside>
+        )}
       </div>
 
-      {/* Phone and tablet layout: one panel at a time under the canvas. */}
-      <div className="flex flex-col xl:hidden">
-        <nav className="flex shrink-0 border-t border-border bg-surface-raised">
-          {(['catalog', 'templates', 'properties', 'checks'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setMobileTab(tab)}
-              className={cn(
-                'flex-1 py-2 text-xs font-medium capitalize transition-colors',
-                mobileTab === tab
-                  ? 'border-t-2 border-accent text-ink'
-                  : 'border-t-2 border-transparent text-ink-muted',
-              )}
-            >
-              {tab}
-              {tab === 'checks' && report.errorCount > 0 && (
-                <span className="ml-1.5 rounded bg-danger px-1 text-[0.625rem] text-white">
-                  {report.errorCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        <div className="flex h-64 flex-col border-t border-border p-2">
-          {mobileTab === 'catalog' && (
-            <CatalogPanel unitSystem={unitSystem} className="min-h-0 flex-1" />
-          )}
-          {mobileTab === 'templates' && (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <TemplatePanel />
-            </div>
-          )}
-          {mobileTab === 'properties' && (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <Inspector unitSystem={unitSystem} />
-            </div>
-          )}
-          {mobileTab === 'checks' && (
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-              <WeightPanel unitSystem={unitSystem} />
-              <WarningsPanel report={report} unitSystem={unitSystem} />
-            </div>
-          )}
+      {!wide && (
+        <div className="flex flex-col">
+          <nav className="flex shrink-0 overflow-x-auto border-t border-border bg-surface-raised">
+            {(['catalog', 'templates', 'items', 'properties', 'checks'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setMobileTab(tab)}
+                className={cn(
+                  'flex-1 px-2 py-2 text-xs font-medium whitespace-nowrap capitalize transition-colors',
+                  mobileTab === tab
+                    ? 'border-t-2 border-accent text-ink'
+                    : 'border-t-2 border-transparent text-ink-muted',
+                )}
+              >
+                {tab}
+                {tab === 'checks' && report.errorCount > 0 && (
+                  <span className="ml-1.5 rounded bg-danger px-1 text-[0.625rem] text-white">
+                    {report.errorCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex h-64 flex-col border-t border-border p-2">
+            {mobileTab === 'catalog' && (
+              <CatalogPanel unitSystem={unitSystem} className="min-h-0 flex-1" />
+            )}
+            {mobileTab === 'templates' && (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <TemplatePanel />
+              </div>
+            )}
+            {mobileTab === 'items' && (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <ProjectItemsPanel unitSystem={unitSystem} />
+              </div>
+            )}
+            {mobileTab === 'properties' && (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <Inspector unitSystem={unitSystem} />
+              </div>
+            )}
+            {mobileTab === 'checks' && (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                <WeightPanel unitSystem={unitSystem} />
+                <WarningsPanel report={report} unitSystem={unitSystem} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

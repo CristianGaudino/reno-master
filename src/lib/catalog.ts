@@ -49,6 +49,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'rock-and-roll-bed',
+    resizable: false,
     name: 'Rock and roll bed',
     category: 'sleeping',
     kind: 'fixed',
@@ -96,6 +97,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'compressor-fridge',
+    resizable: false,
     name: 'Compressor fridge',
     category: 'kitchen',
     kind: 'articulated',
@@ -118,6 +120,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'drawer-fridge',
+    resizable: false,
     name: 'Drawer fridge',
     category: 'kitchen',
     kind: 'articulated',
@@ -139,6 +142,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'two-burner-hob',
+    resizable: false,
     mount: 'worktop',
     name: 'Two-burner hob',
     category: 'kitchen',
@@ -150,6 +154,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'sink-unit',
+    resizable: false,
     mount: 'worktop',
     name: 'Sink',
     category: 'kitchen',
@@ -186,6 +191,7 @@ export const CATALOG: CatalogItem[] = [
   // -------------------------------------------------------------------------
   {
     slug: 'swivel-seat',
+    resizable: false,
     name: 'Swivel seat',
     category: 'seating',
     kind: 'articulated',
@@ -319,6 +325,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'cassette-toilet',
+    resizable: false,
     name: 'Cassette toilet',
     category: 'utility',
     kind: 'fixed',
@@ -329,6 +336,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'portable-toilet',
+    resizable: false,
     name: 'Portable toilet',
     category: 'utility',
     kind: 'loose',
@@ -339,6 +347,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'diesel-heater',
+    resizable: false,
     name: 'Diesel heater',
     category: 'utility',
     kind: 'fixed',
@@ -349,6 +358,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'roof-fan',
+    resizable: false,
     mount: 'roof',
     name: 'Roof fan',
     category: 'utility',
@@ -364,6 +374,7 @@ export const CATALOG: CatalogItem[] = [
   // -------------------------------------------------------------------------
   {
     slug: 'leisure-battery-100',
+    resizable: false,
     name: 'Leisure battery (100Ah LiFePO4)',
     category: 'electrical',
     kind: 'fixed',
@@ -375,6 +386,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'leisure-battery-agm',
+    resizable: false,
     name: 'Leisure battery (110Ah AGM)',
     category: 'electrical',
     kind: 'fixed',
@@ -386,6 +398,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'inverter',
+    resizable: false,
     name: 'Inverter',
     category: 'electrical',
     kind: 'fixed',
@@ -396,6 +409,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'solar-controller',
+    resizable: false,
     mount: 'overhead',
     name: 'Solar controller',
     category: 'electrical',
@@ -407,6 +421,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'fuse-panel',
+    resizable: false,
     mount: 'overhead',
     name: 'Distribution panel',
     category: 'electrical',
@@ -422,6 +437,7 @@ export const CATALOG: CatalogItem[] = [
   // -------------------------------------------------------------------------
   {
     slug: 'fresh-tank-100',
+    massModel: 'water',
     name: 'Fresh water tank (100L)',
     category: 'water',
     kind: 'fixed',
@@ -434,6 +450,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'fresh-tank-60',
+    massModel: 'water',
     name: 'Fresh water tank (60L)',
     category: 'water',
     kind: 'fixed',
@@ -445,6 +462,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'grey-tank-40',
+    massModel: 'water',
     name: 'Grey water tank (40L)',
     category: 'water',
     kind: 'fixed',
@@ -456,6 +474,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'water-pump',
+    resizable: false,
     name: 'Water pump',
     category: 'water',
     kind: 'fixed',
@@ -466,6 +485,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'water-heater',
+    resizable: false,
     name: 'Water heater',
     category: 'water',
     kind: 'fixed',

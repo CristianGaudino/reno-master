@@ -6,8 +6,8 @@
  * identically on both.
  */
 
-import { useMemo, useState } from 'react'
-import { CATALOG } from '../../lib/catalog'
+import { useCallback, useMemo, useState } from 'react'
+import { CATALOG, catalogItem } from '../../lib/catalog'
 import { CATEGORY_LABELS } from '../../lib/constants'
 import { OBJECT_CATEGORIES } from '../../lib/definitions'
 import type {
@@ -22,6 +22,7 @@ import { box3From, boxOf, intersects3D, narrowestXRangeBetween } from '../../lib
 import { formatLength, formatMass } from '../../lib/units'
 import { cn } from '../../lib/cn'
 import { Panel, TextInput } from '../ui'
+import { useDeleteCatalogItem, useUserCatalog } from '../../lib/api/queries'
 import { useEditorStore } from '../../store/editorStore'
 
 /** Worktop height, matching the templates' own anchor. */
@@ -40,9 +41,53 @@ export function CatalogPanel({
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<ObjectCategory | 'all'>('all')
 
-  const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase()
-    return CATALOG.filter((item) => {
+  const saved = useUserCatalog()
+  const deleteSaved = useDeleteCatalogItem()
+
+  /**
+   * The user's own pieces, shaped as catalog entries.
+   *
+   * Placement should not care whether a piece is built in or saved, so they are
+   * converted here rather than handled as a special case everywhere.
+   *
+   * The `slug` deliberately carries the *root* catalog entry rather than the
+   * saved piece's own id. Placing a saved piece and then saving that again would
+   * otherwise record one saved piece as the origin of the next, and after a
+   * couple of rounds a piece could no longer say what it had actually started
+   * life as — losing its mounting height and its door along with it.
+   */
+  const savedAsCatalog: Array<{ id: string; item: CatalogItem }> = useMemo(
+    () =>
+      (saved.data ?? []).map((piece) => {
+        const base = piece.basedOnSlug ? catalogItem(piece.basedOnSlug) : undefined
+        return {
+          id: piece.id,
+          item: {
+            // Falls back to a synthetic slug for a piece built from scratch,
+            // which genuinely has no catalog ancestor.
+            slug: base?.slug ?? `saved:${piece.id}`,
+            name: piece.name,
+            category: piece.category,
+            kind: piece.kind,
+            size: piece.size,
+            mass: piece.mass,
+            cost: piece.cost,
+            color: piece.color,
+            ...(base?.articulationTemplate
+              ? { articulationTemplate: base.articulationTemplate }
+              : {}),
+            ...(base?.mount ? { mount: base.mount } : {}),
+            ...(base?.resizable !== undefined ? { resizable: base.resizable } : {}),
+            ...(base?.massModel ? { massModel: base.massModel } : {}),
+          },
+        }
+      }),
+    [saved.data],
+  )
+
+  const matches = useCallback(
+    (item: CatalogItem) => {
+      const needle = search.trim().toLowerCase()
       if (category !== 'all' && item.category !== category) return false
       if (!needle) return true
       return (
@@ -50,8 +95,15 @@ export function CatalogPanel({
         item.category.includes(needle) ||
         (item.description?.toLowerCase().includes(needle) ?? false)
       )
-    })
-  }, [search, category])
+    },
+    [search, category],
+  )
+
+  const filtered = useMemo(() => CATALOG.filter(matches), [matches])
+  const filteredSaved = useMemo(
+    () => savedAsCatalog.filter((entry) => matches(entry.item)),
+    [savedAsCatalog, matches],
+  )
 
   /**
    * Read the scene straight from the store rather than from this render's
@@ -93,6 +145,51 @@ export function CatalogPanel({
       </div>
 
       <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
+        {filteredSaved.length > 0 && (
+          <li className="bg-surface-sunken px-3 py-1.5 text-[0.6875rem] font-semibold tracking-wide text-ink-muted uppercase">
+            Your pieces
+          </li>
+        )}
+        {filteredSaved.map(({ id, item }) => (
+          <li key={id} className="flex items-stretch">
+            <button
+              type="button"
+              onClick={() => place(item)}
+              className="flex min-w-0 flex-1 items-start gap-2.5 px-3 py-2.5 text-left hover:bg-surface-sunken"
+            >
+              <span
+                aria-hidden
+                className="mt-1 size-3 shrink-0 rounded-sm"
+                style={{ background: item.color }}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm leading-tight font-medium text-ink">
+                  {item.name}
+                </span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  {formatLength(item.size.w, unitSystem)} ×{' '}
+                  {formatLength(item.size.d, unitSystem)} ×{' '}
+                  {formatLength(item.size.h, unitSystem)} · {formatMass(item.mass, unitSystem)}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              title="Remove from your pieces"
+              onClick={() => deleteSaved.mutate(id)}
+              className="shrink-0 px-2 text-xs text-ink-faint hover:text-danger"
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+
+        {filteredSaved.length > 0 && (
+          <li className="bg-surface-sunken px-3 py-1.5 text-[0.6875rem] font-semibold tracking-wide text-ink-muted uppercase">
+            Catalog
+          </li>
+        )}
+
         {filtered.map((item) => (
           <li key={item.slug}>
             <button

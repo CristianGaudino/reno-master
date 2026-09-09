@@ -127,6 +127,7 @@ async function writeDelta(
               connections: sql`excluded.connections`,
               zIndex: sql`excluded.z_index`,
               notes: sql`excluded.notes`,
+              catalogSlug: sql`excluded.catalog_slug`,
               updatedAt: sql`excluded.updated_at`,
             },
             // Scoped to the project so a stray id cannot overwrite a row

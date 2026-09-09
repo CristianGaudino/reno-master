@@ -25,14 +25,17 @@ import type {
   VanModel,
 } from '../definitions'
 import {
+  createCatalogItem,
   createProject,
   duplicateProject,
+  fetchCatalogItems,
   fetchProject,
   fetchProjects,
   fetchSettings,
   fetchVanModels,
   patchProject,
   patchSettings,
+  removeCatalogItem,
   removeProject,
 } from './client'
 
@@ -40,6 +43,7 @@ export const queryKeys = {
   projects: ['projects'] as const,
   project: (id: string) => ['projects', id] as const,
   vanModels: ['van-models'] as const,
+  catalog: ['catalog'] as const,
   settings: ['settings'] as const,
 }
 
@@ -69,6 +73,27 @@ export function useProjectQuery(id: string | undefined) {
     // underneath an in-progress edit would fight the local-first store.
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+  })
+}
+
+/** Pieces the user has saved for reuse. */
+export function useUserCatalog() {
+  return useQuery({ queryKey: queryKeys.catalog, queryFn: fetchCatalogItems })
+}
+
+export function useSaveCatalogItem() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: createCatalogItem,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.catalog }),
+  })
+}
+
+export function useDeleteCatalogItem() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: removeCatalogItem,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.catalog }),
   })
 }
 
