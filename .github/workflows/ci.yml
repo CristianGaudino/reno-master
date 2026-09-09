@@ -72,7 +72,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # A separate identity from local development, so a CI run never edits
-          # anyone's real builds.
+          # anyone's real builds. The suites also scope themselves per request,
+          # so this is belt and braces.
           DEV_USER_ID: ci-runner
         run: |
           if [ -z "$DATABASE_URL" ]; then

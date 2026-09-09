@@ -946,15 +946,17 @@ var init_catalog = __esm({
 
 // server/middleware/auth.ts
 import { createMiddleware } from "hono/factory";
-var userIdCache, auth;
+var userIdCache, DEV_IDENTITY_HEADER, auth;
 var init_auth = __esm({
   "server/middleware/auth.ts"() {
     "use strict";
     init_config_server();
     init_settings();
     userIdCache = /* @__PURE__ */ new Map();
+    DEV_IDENTITY_HEADER = "x-dev-identity";
     auth = createMiddleware(async (c, next) => {
-      const externalId = devUserId();
+      const requested = c.req.header(DEV_IDENTITY_HEADER);
+      const externalId = requested ? `dev-scoped:${requested}` : devUserId();
       let userId = userIdCache.get(externalId);
       if (!userId) {
         userId = await ensureUser(externalId);

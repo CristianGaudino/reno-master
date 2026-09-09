@@ -25,6 +25,12 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Runs against its own account rather than whoever is developing. The
+    // suite creates and abandons projects constantly, and sharing an identity
+    // with a real user buries their work in fixtures. Sent as a header rather
+    // than an environment variable so it holds even when the tests reuse a dev
+    // server that was already running.
+    extraHTTPHeaders: { 'x-dev-identity': 'e2e' },
   },
 
   /*

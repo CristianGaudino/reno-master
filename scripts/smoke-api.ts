@@ -18,6 +18,9 @@ import { createServer } from 'node:http'
 import handler from '../server/vercel'
 
 const PORT = 9911
+
+/** Its own account, so a smoke run never leaves fixtures in a real one. */
+const IDENTITY = { 'x-dev-identity': 'smoke' }
 const server = createServer((req, res) => {
   void handler(req, res)
 })
@@ -44,7 +47,7 @@ await check('GET /api/health', async () => {
 })
 
 await check('GET /api/van-models returns the seeded library', async () => {
-  const response = await fetch(`${base}/api/van-models`)
+  const response = await fetch(`${base}/api/van-models`, { headers: IDENTITY })
   const body = (await response.json()) as { models: unknown[] }
   return response.status === 200 && body.models.length > 0
 })
@@ -53,15 +56,22 @@ await check('GET /api/van-models returns the seeded library', async () => {
 await check('POST /api/projects accepts a JSON body', async () => {
   const response = await fetch(`${base}/api/projects`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...IDENTITY },
     body: JSON.stringify({ name: 'API smoke test' }),
   })
   const body = (await response.json()) as { project?: { id: string } }
-  return response.status === 201 && Boolean(body.project?.id)
+  if (response.status !== 201 || !body.project?.id) return false
+
+  // Clean up after itself rather than leaving a project behind on every run.
+  await fetch(`${base}/api/projects/${body.project.id}`, {
+    method: 'DELETE',
+    headers: IDENTITY,
+  })
+  return true
 })
 
 await check('rejects a malformed id rather than throwing', async () => {
-  const response = await fetch(`${base}/api/projects/not-a-uuid`)
+  const response = await fetch(`${base}/api/projects/not-a-uuid`, { headers: IDENTITY })
   return response.status === 400
 })
 

@@ -28,8 +28,23 @@ export interface AuthVariables {
 /** Cache the id lookup per identity so warm invocations skip a round trip. */
 const userIdCache = new Map<string, string>()
 
+/**
+ * Header that lets a caller pick its own identity while auth is stubbed.
+ *
+ * Test runs would otherwise share the account a developer is using, and they
+ * create and delete projects freely — which is how a real account ends up with
+ * three hundred fixtures called "Tank mass" in it.
+ *
+ * This grants nothing that is not already granted: there is no authentication
+ * at all yet, so every caller is the same user regardless. It disappears with
+ * the rest of this stub when Clerk arrives, and the identity it selects is
+ * namespaced so it can never collide with a real one.
+ */
+const DEV_IDENTITY_HEADER = 'x-dev-identity'
+
 export const auth = createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
-  const externalId = devUserId()
+  const requested = c.req.header(DEV_IDENTITY_HEADER)
+  const externalId = requested ? `dev-scoped:${requested}` : devUserId()
 
   let userId = userIdCache.get(externalId)
   if (!userId) {
