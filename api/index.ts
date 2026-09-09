@@ -23,21 +23,39 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import app from '../server/app'
+
+/**
+ * The app is imported inside the handler rather than at module scope.
+ *
+ * A module that throws while loading gives Vercel nothing to report but
+ * FUNCTION_INVOCATION_FAILED, which says only that something went wrong — and
+ * the only way to test this file is to deploy it. Importing lazily means a load
+ * failure is caught here and answered with the actual reason.
+ */
+let cached: typeof import('../server/app').default | null = null
+
+async function getApp() {
+  cached ??= (await import('../server/app')).default
+  return cached
+}
 
 export default async function handler(
   req: IncomingMessage & { body?: unknown },
   res: ServerResponse,
 ): Promise<void> {
   try {
+    const app = await getApp()
     const response = await app.fetch(await toRequest(req))
     await writeResponse(res, response)
   } catch (error) {
-    // A throw here means the request never reached Hono's own error handler.
+    // Reaching here means the request never got as far as Hono's own error
+    // handler — usually the app failing to load at all.
+    const message = error instanceof Error ? error.message : String(error)
     console.error('Function invocation failed', error)
+
     res.statusCode = 500
     res.setHeader('content-type', 'application/json')
-    res.end(JSON.stringify({ error: 'Internal error' }))
+    res.end(JSON.stringify({ error: 'Internal error', reason: message }))
   }
 }
 
