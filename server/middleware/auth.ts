@@ -17,8 +17,8 @@
  */
 
 import { createMiddleware } from 'hono/factory'
-import { devUserId } from '@/lib/config.server'
-import { ensureUser } from '@/lib/actions/settings'
+import { devUserId } from '../../src/lib/config.server'
+import { ensureUser } from '../../src/lib/actions/settings'
 
 export interface AuthVariables {
   userId: string

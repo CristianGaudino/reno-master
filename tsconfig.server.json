@@ -19,6 +19,7 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": [
+    "api",
     "e2e",
     "playwright.config.ts",
     "server",

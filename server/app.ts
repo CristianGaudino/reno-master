@@ -26,7 +26,7 @@ import {
   syncRequestSchema,
   updateProjectSchema,
   updateSettingsSchema,
-} from '@/lib/definitions/api'
+} from '../src/lib/definitions/api'
 import {
   getProject,
   getProjectObjects,
@@ -34,16 +34,16 @@ import {
   listProjects,
   listUserCatalogItems,
   listVanModels,
-} from '@/lib/data'
+} from '../src/lib/data'
 import {
   createProject,
   deleteProject,
   duplicateProject,
   updateProject,
-} from '@/lib/actions/projects'
-import { applySync } from '@/lib/actions/sync'
-import { updateUserSettings } from '@/lib/actions/settings'
-import { createCatalogItem, deleteCatalogItem } from '@/lib/actions/catalog'
+} from '../src/lib/actions/projects'
+import { applySync } from '../src/lib/actions/sync'
+import { updateUserSettings } from '../src/lib/actions/settings'
+import { createCatalogItem, deleteCatalogItem } from '../src/lib/actions/catalog'
 import { auth, type AuthVariables } from './middleware/auth'
 
 const app = new Hono<{ Variables: AuthVariables }>().basePath('/api')

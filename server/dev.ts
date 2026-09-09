@@ -9,7 +9,7 @@
 import './env'
 import { serve } from '@hono/node-server'
 import app from './app'
-import { apiPort } from '@/lib/config.server'
+import { apiPort } from '../src/lib/config.server'
 
 const port = apiPort()
 
