@@ -1,16 +1,27 @@
 /**
  * Vercel serverless entrypoint.
  *
- * Committed as TypeScript rather than generated, because Vercel discovers
- * functions from the files in the repository. An earlier version bundled this
- * with esbuild into a git-ignored `api/index.js` during the build, so at
- * discovery time there was nothing in the source tree to find — the deployment
- * came up with a working front end and every `/api/*` request falling through to
- * the SPA shell.
+ * Bundled by `npm run build:api` into `api/index.js`, which is committed. Both
+ * halves of that are load-bearing, and both were learned the hard way:
  *
- * The whole server import graph uses relative paths for the same reason: the
- * platform compiles this file itself, and its TypeScript resolution does not
- * reliably honour tsconfig path aliases.
+ * **Committed**, because Vercel discovers functions from the files in the
+ * repository, not from build output. Generating `api/index.js` during the build
+ * left nothing to discover, and the deployment came up with a working front end
+ * and every `/api/*` request falling through to the SPA shell.
+ *
+ * **Bundled**, because Vercel compiles a TypeScript entry but does not bundle
+ * it, and this is an ESM package — so `import app from './app'` becomes an
+ * extensionless relative import that Node cannot resolve:
+ *
+ *     Cannot find module '/var/task/server/app' imported from /var/task/api/index.js
+ *
+ * Bundling collapses the whole server graph into one file, leaving only bare
+ * package specifiers, which resolve from node_modules without extensions. The
+ * alternative was appending `.js` to every relative import across code the
+ * browser shares.
+ *
+ * `npm run smoke:api` exercises this adapter over real HTTP, and CI checks the
+ * committed bundle is current, so neither half can rot quietly.
  *
  * ## Why the adapter is written out by hand
  *
@@ -18,11 +29,13 @@
  * handler. Whether a given Vercel Node runtime accepts one of those directly has
  * moved around, and this is a file that can only be tested by deploying it — a
  * slow and public way to find out you were wrong. The `(req, res)` signature
- * below is the oldest and most broadly supported thing the platform offers, so
- * it trades a few lines for not having to guess.
+ * below is the oldest and most broadly supported thing the platform offers.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import type app from './app'
+
+type HonoApp = typeof app
 
 /**
  * The app is imported inside the handler rather than at module scope.
@@ -32,10 +45,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
  * the only way to test this file is to deploy it. Importing lazily means a load
  * failure is caught here and answered with the actual reason.
  */
-let cached: typeof import('../server/app').default | null = null
+let cached: HonoApp | null = null
 
 async function getApp() {
-  cached ??= (await import('../server/app')).default
+  cached ??= (await import('./app')).default
   return cached
 }
 

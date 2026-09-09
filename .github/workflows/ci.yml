@@ -27,6 +27,18 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # api/index.js is generated but committed, because Vercel discovers
+      # functions from the repository rather than from build output. Committing
+      # generated code is only safe if it cannot drift from its source.
+      - name: Assert the committed API bundle is current
+        run: |
+          if ! git diff --quiet -- api/index.js; then
+            echo "::error::api/index.js is out of date — run 'npm run build:api' and commit it"
+            git diff --stat -- api/index.js
+            exit 1
+          fi
+          echo "committed API bundle matches its source"
+
       # The server-only guard is a lint rule, but the thing it protects against
       # is a property of the built artefact — so assert it against the artefact.
       # A leak here means the Neon driver and the connection string shipped to

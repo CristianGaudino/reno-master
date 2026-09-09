@@ -7,12 +7,15 @@
  * a deployment breaks while every local check passes, so it gets its own smoke
  * test rather than being discovered in production.
  *
+ * It targets the adapter source rather than the committed bundle, since the
+ * bundle is that source with its imports inlined.
+ *
  * Run with `npm run smoke:api` against a seeded database.
  */
 
 import '../server/env'
 import { createServer } from 'node:http'
-import handler from '../api/index'
+import handler from '../server/vercel'
 
 const PORT = 9911
 const server = createServer((req, res) => {
