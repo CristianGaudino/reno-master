@@ -21,7 +21,8 @@ import type {
 import { box3From, boxOf, intersects3D, narrowestXRangeBetween } from '../../lib/geometry'
 import { formatLength, formatMass } from '../../lib/units'
 import { cn } from '../../lib/cn'
-import { Panel, TextInput } from '../ui'
+import { Button, Panel, TextInput } from '../ui'
+import { NewObjectModal } from './NewObjectModal'
 import { useDeleteCatalogItem, useUserCatalog } from '../../lib/api/queries'
 import { useEditorStore } from '../../store/editorStore'
 
@@ -40,6 +41,7 @@ export function CatalogPanel({
 }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<ObjectCategory | 'all'>('all')
+  const [newObjectOpen, setNewObjectOpen] = useState(false)
 
   const saved = useUserCatalog()
   const deleteSaved = useDeleteCatalogItem()
@@ -120,7 +122,16 @@ export function CatalogPanel({
   }
 
   return (
-    <Panel title="Catalog" className={className} bodyClassName="flex flex-col">
+    <Panel
+      title="Catalog"
+      className={className}
+      bodyClassName="flex flex-col"
+      actions={
+        <Button size="sm" variant="ghost" onClick={() => setNewObjectOpen(true)}>
+          + New piece
+        </Button>
+      }
+    >
       <div className="space-y-2 border-b border-border p-2">
         <TextInput
           placeholder="Search"
@@ -221,6 +232,12 @@ export function CatalogPanel({
           </li>
         ))}
       </ul>
+
+      <NewObjectModal
+        open={newObjectOpen}
+        onClose={() => setNewObjectOpen(false)}
+        unitSystem={unitSystem}
+      />
     </Panel>
   )
 }

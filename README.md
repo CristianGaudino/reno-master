@@ -63,6 +63,8 @@ as production.
 | `npm run build` | Typecheck, build the SPA, bundle the API function |
 | `npm run db:generate` | Generate a migration from the schema |
 | `npm run db:seed` | Re-seed the van presets (idempotent) |
+| `npm run test:e2e` | Playwright, against the running app and a real database |
+| `npm run bench` | Per-rule cost of the rules engine |
 
 ## How it fits together
 
@@ -117,6 +119,46 @@ Concurrent edits are caught rather than merged: the client sends the revision it
 built on, and a mismatch returns 409 with the server's state so the UI can offer
 *keep mine* / *load theirs*. Nothing is silently overwritten.
 
+## Performance
+
+The rules run on every pointermove, so the whole pass has to fit inside a frame
+alongside React's render. `npm run bench` keeps the numbers honest:
+
+| Objects | Rules pass |
+|---|---|
+| 20 | 0.5 ms |
+| 50 | 1.4 ms |
+| 100 | 3.3 ms |
+
+Two things get it there. Swing checks reject candidates outside the leaf's reach
+before doing any per-angle work, and overlap does a cheap axis-aligned rejection
+before the exact separating-axis test. Both are exact — they skip work that could
+not have changed the answer, rather than approximating.
+
+On the React side the shapes are memoised and the pointer handlers read the scene
+from the store rather than closing over it, so dragging one object re-renders one
+object. Measured in a browser with 120 objects on the canvas: 16.6 ms median
+frame, a locked 60fps.
+
+## Keyboard
+
+The canvas is focusable and its contents are reachable without a pointer, which
+is also the only way to place something exactly.
+
+| | |
+|---|---|
+| `Tab` / `Shift+Tab` | step through the objects |
+| arrows | move the selection by the snap grid |
+| `Alt` + arrows | move by a single millimetre |
+| `Shift` + arrows | move by ten grid steps |
+| `Ctrl/Cmd+Z`, `+Shift` | undo, redo |
+| `Ctrl/Cmd+D` | duplicate |
+| `Ctrl/Cmd+S` | commit to the server now |
+| `Delete`, `Escape` | delete selection, clear selection |
+
+In the elevations the vertical arrows move height rather than length, matching
+what is on screen.
+
 ## Known limitations
 
 These are real and deliberate, not oversights.
@@ -137,6 +179,11 @@ These are real and deliberate, not oversights.
 - **Ergonomic thresholds use conventional design-guide body ratios**, not
   measurements of you. They catch layouts that are obviously wrong, which is what
   warnings are for.
+- **Nothing checks that objects are supported.** A cabinet floating at 800mm with
+  nothing beneath it passes every check. The geometry to answer it exists; the
+  rule does not.
+- **Costs are catalog prices for the pieces only** — no timber, fixings, wiring
+  or labour. Order-of-magnitude budgeting, not a quote.
 
 ## Warnings report two bodies
 

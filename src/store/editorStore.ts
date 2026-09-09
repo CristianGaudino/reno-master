@@ -52,6 +52,15 @@ interface EditorState {
   projectId: string | null
   project: Project | null
   vanModel: VanModel | null
+  /**
+   * The preset library.
+   *
+   * Held here so the store can re-resolve the van on its own when the project
+   * switches model. Without it `patchProject` had only the previously loaded
+   * model to work from, so changing the vehicle changed the id and nothing
+   * else — same dimensions, same label, same obstacles.
+   */
+  vanModels: VanModel[]
   van: ResolvedVan | null
   objects: VanObject[]
   settings: UserSettings
@@ -97,6 +106,7 @@ interface EditorState {
     project: Project
     objects: VanObject[]
     vanModel: VanModel | null
+    vanModels: VanModel[]
     settings: UserSettings
     fromLocal: LocalScene | null
   }): void
@@ -111,6 +121,8 @@ interface EditorState {
   toggleLayer(layer: RuleLayer): void
   setShowRuns(show: boolean): void
   unlockResize(id: string): void
+  nudgeSelection(delta: Partial<Vec3>): void
+  selectNext(step: number): void
   applyTemplate(template: Template): void
 
   addFromCatalog(item: CatalogItem, position: Vec3): string
@@ -238,6 +250,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     projectId: null,
     project: null,
     vanModel: null,
+    vanModels: [],
     van: null,
     objects: [],
     settings: defaultSettings,
@@ -264,13 +277,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
     serverRevisionOnConflict: null,
     nextSyncId: crypto.randomUUID(),
 
-    hydrate({ project, objects, vanModel, settings, fromLocal }) {
+    hydrate({ project, objects, vanModel, vanModels, settings, fromLocal }) {
       const useLocal = fromLocal !== null
 
       set({
         projectId: project.id,
         project: useLocal ? fromLocal.project : project,
         vanModel,
+        vanModels,
         van: resolveVan(useLocal ? fromLocal.project : project, vanModel),
         objects: useLocal ? fromLocal.objects : objects,
         settings,
@@ -356,6 +370,58 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const current = get().unlockedIds
       if (current.includes(id)) return
       set({ unlockedIds: [...current, id] })
+    },
+
+    /**
+     * Move the selection by an exact amount.
+     *
+     * Dragging is good for roughing a layout out and hopeless for the last
+     * five millimetres. Arrow keys move by the snap grid, which is the only way
+     * to place something precisely without typing coordinates into a field.
+     *
+     * Each press is its own undo entry — unlike a drag, which coalesces —
+     * because a press is already a discrete decision.
+     */
+    nudgeSelection(delta) {
+      const state = get()
+      if (state.selectedIds.length === 0) return
+
+      const selected = new Set(state.selectedIds)
+      const placements = state.objects
+        .filter((object) => selected.has(object.id))
+        .map((object) => ({
+          id: object.id,
+          position: {
+            x: object.position.x + (delta.x ?? 0),
+            y: object.position.y + (delta.y ?? 0),
+            z: object.position.z + (delta.z ?? 0),
+          },
+        }))
+
+      state.placeObjects(placements)
+    },
+
+    /**
+     * Step through the objects with the keyboard.
+     *
+     * Without this the canvas is reachable but its contents are not: everything
+     * in the van could only ever be selected by pointing at it.
+     */
+    selectNext(step) {
+      const state = get()
+      if (state.objects.length === 0) return
+
+      const ordered = [...state.objects].sort((a, b) => a.zIndex - b.zIndex)
+      const current = ordered.findIndex((object) => state.selectedIds.includes(object.id))
+
+      const next =
+        current === -1
+          ? step > 0
+            ? 0
+            : ordered.length - 1
+          : (current + step + ordered.length) % ordered.length
+
+      set({ selectedIds: [ordered[next]!.id] })
     },
 
     /**
@@ -687,9 +753,17 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (!state.project) return
 
       const project = { ...state.project, ...patch }
+
+      // Re-look-up the model rather than reusing the loaded one: the patch may
+      // have changed which van this project is.
+      const vanModel = project.vanModelId
+        ? (state.vanModels.find((model) => model.id === project.vanModelId) ?? null)
+        : null
+
       set({
         project,
-        van: resolveVan(project, state.vanModel),
+        vanModel,
+        van: resolveVan(project, vanModel),
         projectDirty: true,
         syncStatus: 'pending',
       })

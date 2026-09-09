@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push makes an in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Everything that needs nothing but the code. Fast, and the only job that has
+  # to pass for a change to be considered sane.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      # The server-only guard is a lint rule, but the thing it protects against
+      # is a property of the built artefact — so assert it against the artefact.
+      # A leak here means the Neon driver and the connection string shipped to
+      # every visitor.
+      - name: Assert no server code in the client bundle
+        run: |
+          for needle in DATABASE_URL neondatabase drizzle-orm 'postgresql://'; do
+            if grep -rqF "$needle" dist/assets/*.js; then
+              echo "::error::'$needle' found in the client bundle"
+              exit 1
+            fi
+          done
+          echo "client bundle is clean"
+
+  # Drives the real app against a real database. Kept separate because it needs
+  # a secret, so it can be skipped on a fork without failing the whole run.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # A separate identity from local development, so a CI run never edits
+          # anyone's real builds.
+          DEV_USER_ID: ci-runner
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL is not set — skipping end-to-end tests"
+            exit 0
+          fi
+          npm run db:push -- --force
+          npm run db:seed
+          npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

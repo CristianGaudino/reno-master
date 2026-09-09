@@ -43,12 +43,17 @@ export function ProjectsPage() {
 
   const create = async () => {
     const trimmed = name.trim() || 'Untitled build'
-    const project = await createProject.mutateAsync({
-      name: trimmed,
-      vanModelId: vanModelId === 'custom' ? null : vanModelId,
-      customInterior: vanModelId === 'custom' ? { ...DEFAULT_CUSTOM_INTERIOR } : null,
-    })
-    void navigate(`/projects/${project.id}`)
+    try {
+      const project = await createProject.mutateAsync({
+        name: trimmed,
+        vanModelId: vanModelId === 'custom' ? null : vanModelId,
+        customInterior: vanModelId === 'custom' ? { ...DEFAULT_CUSTOM_INTERIOR } : null,
+      })
+      void navigate(`/projects/${project.id}`)
+    } catch {
+      // The mutation has already told the user what went wrong; this only stops
+      // the rejection escaping as an unhandled promise.
+    }
   }
 
   const selectedModel = vanModels.data?.find((model) => model.id === vanModelId)

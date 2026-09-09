@@ -144,6 +144,65 @@ describe('hard conflicts', () => {
     expect(findingsFor(tall, RULE_IDS.OUT_OF_BOUNDS)[0]?.message).toContain('left wall')
   })
 
+  it('reports an object built through a wheel arch', () => {
+    // The constraint that breaks more layouts than any other, and the one a
+    // "just make it 50mm wider" plan dies on.
+    const arch: VanObstacle = {
+      id: 'left-arch',
+      vanModelId: 'test-van',
+      kind: 'wheel_well',
+      name: 'Left wheel well',
+      position: { x: 0, y: 2000, z: 0 },
+      size: { w: 205, d: 1010, h: 300 },
+      articulation: null,
+      confidence: 'approximate',
+    }
+
+    const report = run(
+      [
+        object({
+          name: 'Garage',
+          position: { x: 0, y: 2100, z: 0 },
+          size: { w: 900, d: 600, h: 400 },
+        }),
+      ],
+      { van: van({ obstacles: [arch] }) },
+    )
+
+    const findings = findingsFor(report, RULE_IDS.OBSTACLE_INTERSECT)
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.message).toContain('left wheel well')
+    expect(findings[0]?.severity).toBe('error')
+  })
+
+  it('lets a raised platform clear the arch it sits above', () => {
+    // Putting the bed on top of the arches is the standard answer, so it must
+    // not be reported as building through them.
+    const arch: VanObstacle = {
+      id: 'left-arch',
+      vanModelId: 'test-van',
+      kind: 'wheel_well',
+      name: 'Left wheel well',
+      position: { x: 0, y: 2000, z: 0 },
+      size: { w: 205, d: 1010, h: 300 },
+      articulation: null,
+      confidence: 'approximate',
+    }
+
+    const report = run(
+      [
+        object({
+          name: 'Bed platform',
+          position: { x: 0, y: 2000, z: 300 },
+          size: { w: 1700, d: 1400, h: 400 },
+        }),
+      ],
+      { van: van({ obstacles: [arch] }) },
+    )
+
+    expect(findingsFor(report, RULE_IDS.OBSTACLE_INTERSECT)).toHaveLength(0)
+  })
+
   it('names the angle at which a door fouls', () => {
     // The headline check in the spec. A wall of bed 400mm from the hinge stops a
     // 500mm leaf at roughly 53 degrees, so with 5-degree sampling it opens to 50.
@@ -252,6 +311,81 @@ describe('ergonomic warnings', () => {
       { settings: settings({ heightMm: 1829 }) },
     )
     expect(findingsFor(report, RULE_IDS.BED_LENGTH)[0]?.personas).toHaveLength(1)
+  })
+
+  it('measures sitting headroom from the mattress, not the floor', () => {
+    // The number that decides whether you can sit up in bed, which people care
+    // about far more than they expect to before living in the van.
+    const report = run(
+      [
+        object({
+          category: 'sleeping',
+          name: 'Bed',
+          position: { x: 0, y: 1500, z: 900 },
+          size: { w: 1400, d: 1900, h: 200 },
+        }),
+      ],
+      { settings: settings({ heightMm: 1800 }) },
+    )
+
+    const findings = findingsFor(report, RULE_IDS.SITTING_HEADROOM)
+    expect(findings).toHaveLength(1)
+    // Van is 1900 tall, bed surface at 1100: 800mm of sitting room.
+    expect(findings[0]?.measured?.value).toBe(800)
+  })
+
+  it('blames whatever is hanging over the bed', () => {
+    const report = run([
+      object({
+        category: 'sleeping',
+        name: 'Bed',
+        position: { x: 0, y: 1500, z: 400 },
+        size: { w: 1400, d: 1900, h: 200 },
+      }),
+      object({
+        category: 'storage',
+        name: 'Overhead locker',
+        position: { x: 0, y: 1500, z: 1000 },
+        size: { w: 1400, d: 1900, h: 400 },
+      }),
+    ])
+
+    const findings = findingsFor(report, RULE_IDS.SITTING_HEADROOM)
+    expect(findings).toHaveLength(1)
+    // 400mm from the mattress at 600 to the locker underside at 1000.
+    expect(findings[0]?.measured?.value).toBe(400)
+    expect(findings[0]?.detail).toContain('overhead locker')
+  })
+
+  it('flags overhead storage that is out of comfortable reach', () => {
+    const report = run(
+      [
+        object({
+          category: 'storage',
+          name: 'High locker',
+          position: { x: 0, y: 0, z: 1500 },
+          size: { w: 600, d: 400, h: 380 },
+        }),
+      ],
+      { settings: settings({ heightMm: 1600 }) },
+    )
+
+    const findings = findingsFor(report, RULE_IDS.REACH_HEIGHT)
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.measured?.value).toBe(1880)
+  })
+
+  it('leaves a floor cupboard out of the reach check', () => {
+    // Reach only means overhead: a base unit is not a reach problem.
+    const report = run([
+      object({
+        category: 'storage',
+        name: 'Base unit',
+        position: { x: 0, y: 0, z: 0 },
+        size: { w: 600, d: 400, h: 900 },
+      }),
+    ])
+    expect(findingsFor(report, RULE_IDS.REACH_HEIGHT)).toHaveLength(0)
   })
 
   it('measures the walkway between two facing units', () => {
@@ -363,6 +497,45 @@ describe('weight and axle load', () => {
 
     expect(load.rearAxle - van().kerbRearAxle).toBeCloseTo(50_000, -2)
     expect(load.frontAxle - van().kerbFrontAxle).toBeCloseTo(50_000, -2)
+  })
+
+  it('reports an overloaded rear axle and names the heavy items behind it', () => {
+    // The safety claim in the app with the least obvious arithmetic. Rear axle
+    // capacity here is kerb 900kg + 60% of the 1000kg payload = 1500kg, so
+    // 700kg parked on the axle takes it over.
+    const report = run([
+      object({
+        name: 'Water tank',
+        position: { x: 0, y: 2400, z: 0 },
+        size: { w: 800, d: 500, h: 300 },
+        mass: 400_000,
+      }),
+      object({
+        name: 'Batteries',
+        position: { x: 900, y: 2400, z: 0 },
+        size: { w: 400, d: 300, h: 250 },
+        mass: 300_000,
+      }),
+    ])
+
+    const findings = findingsFor(report, RULE_IDS.AXLE_LOAD)
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.message).toContain('Rear axle')
+    // It points at what to move, not just that something is wrong.
+    expect(findings[0]?.objectIds.length).toBeGreaterThan(0)
+  })
+
+  it('says nothing about the axles when the load sits over the wheelbase', () => {
+    const midpoint = (-800 + 2700) / 2
+    const report = run([
+      object({
+        name: 'Water tank',
+        position: { x: 0, y: midpoint - 250, z: 0 },
+        size: { w: 800, d: 500, h: 300 },
+        mass: 300_000,
+      }),
+    ])
+    expect(findingsFor(report, RULE_IDS.AXLE_LOAD)).toHaveLength(0)
   })
 
   it('raises an error once the build exceeds payload', () => {

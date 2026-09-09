@@ -24,6 +24,8 @@ import type {
   UserSettings,
   VanModel,
 } from '../definitions'
+import { useNotify } from '../../hooks/useNotify'
+import { ApiError } from './client'
 import {
   createCatalogItem,
   createProject,
@@ -38,6 +40,43 @@ import {
   removeCatalogItem,
   removeProject,
 } from './client'
+
+/**
+ * Turn a failure into something worth reading.
+ *
+ * A raw fetch rejection says "Failed to fetch", which tells the user nothing
+ * about whether their work is safe. Everything the editor does is held locally
+ * first, so the honest reassurance is that nothing has been lost.
+ */
+export function describeMutationError(
+  error: unknown,
+  action: string,
+): { message: string; detail: string } {
+  const status = error instanceof ApiError ? error.status : 0
+
+  if (status === 0) {
+    return {
+      message: `Could not ${action} — no connection to the server`,
+      detail: 'Your work is still saved on this device. Try again when you are back online.',
+    }
+  }
+  if (status === 404) {
+    return {
+      message: `Could not ${action} — it no longer exists`,
+      detail: 'It may have been deleted in another tab.',
+    }
+  }
+  if (status === 409) {
+    return {
+      message: `Could not ${action} — it was changed somewhere else`,
+      detail: 'Reload to pick up the other version.',
+    }
+  }
+  return {
+    message: `Could not ${action}`,
+    detail: error instanceof Error ? error.message : 'The server rejected the request.',
+  }
+}
 
 export const queryKeys = {
   projects: ['projects'] as const,
@@ -83,17 +122,21 @@ export function useUserCatalog() {
 
 export function useSaveCatalogItem() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: createCatalogItem,
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.catalog }),
+    onError: (error) => report(notify, error, 'save that piece'),
   })
 }
 
 export function useDeleteCatalogItem() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: removeCatalogItem,
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.catalog }),
+    onError: (error) => report(notify, error, 'remove that piece'),
   })
 }
 
@@ -103,38 +146,47 @@ export function useSettings() {
 
 export function useCreateProject(): UseMutationResult<Project, Error, CreateProjectInput> {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: createProject,
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+    onError: (error) => report(notify, error, 'create that build'),
   })
 }
 
 export function useRenameProject() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => patchProject(id, { name }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+    onError: (error) => report(notify, error, 'rename that build'),
   })
 }
 
 export function useDuplicateProject() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => duplicateProject(id, name),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+    onError: (error) => report(notify, error, 'duplicate that build'),
   })
 }
 
 export function useDeleteProject() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: removeProject,
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+    onError: (error) => report(notify, error, 'delete that build'),
   })
 }
 
 export function useUpdateSettings() {
   const client = useQueryClient()
+  const notify = useNotify()
   return useMutation({
     mutationFn: (patch: UpdateSettingsInput) => patchSettings(patch),
     // Settings drive the rules engine and every displayed unit, so the cache is
@@ -143,6 +195,7 @@ export function useUpdateSettings() {
     onSuccess: (settings: UserSettings) => {
       client.setQueryData(queryKeys.settings, settings)
     },
+    onError: (error) => report(notify, error, 'save that setting'),
   })
 }
 
@@ -154,3 +207,13 @@ export function useVanModel(id: string | null | undefined): VanModel | null {
 }
 
 export type { ProjectSummary }
+
+/** Shared shape for every failure path. */
+function report(
+  notify: (message: string, detail?: string) => void,
+  error: unknown,
+  action: string,
+): void {
+  const described = describeMutationError(error, action)
+  notify(described.message, described.detail)
+}

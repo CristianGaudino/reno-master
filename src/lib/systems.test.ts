@@ -167,6 +167,54 @@ const wheelWell = (side: string, x: number): ResolvedVan['obstacles'][number] =>
   confidence: 'approximate',
 })
 
+describe('water runs', () => {
+  it('warns when the pump is a long way from its tank', () => {
+    // A distant pump is slow to prime and easy to hear, so it gets a tighter
+    // threshold than the outlets do.
+    const tank = object({
+      name: 'Fresh water tank',
+      category: 'water',
+      position: { x: 0, y: 0, z: 0 },
+      size: { w: 800, d: 500, h: 300 },
+    })
+    const pump = object({
+      name: 'Water pump',
+      category: 'water',
+      position: { x: 1200, y: 2600, z: 0 },
+      size: { w: 200, d: 110, h: 110 },
+    })
+
+    const report = evaluateScene(buildContext(van(), [tank, pump], settings), ALL_RULES)
+    const finding = report.findings.find(
+      (candidate) => candidate.ruleId === RULE_IDS.WATER_RUN_LENGTH,
+    )
+
+    expect(finding).toBeDefined()
+    expect(finding?.layer).toBe('plumbing')
+    expect(finding?.detail).toContain('prime')
+  })
+
+  it('leaves a pump sat beside its tank alone', () => {
+    const tank = object({
+      name: 'Fresh water tank',
+      category: 'water',
+      position: { x: 0, y: 0, z: 0 },
+      size: { w: 800, d: 500, h: 300 },
+    })
+    const pump = object({
+      name: 'Water pump',
+      category: 'water',
+      position: { x: 850, y: 0, z: 0 },
+      size: { w: 200, d: 110, h: 110 },
+    })
+
+    const report = evaluateScene(buildContext(van(), [tank, pump], settings), ALL_RULES)
+    expect(
+      report.findings.some((candidate) => candidate.ruleId === RULE_IDS.WATER_RUN_LENGTH),
+    ).toBe(false)
+  })
+})
+
 describe('templates', () => {
   it('fits every template into every seeded van shape', () => {
     // Anchors, not coordinates: the same template has to produce something

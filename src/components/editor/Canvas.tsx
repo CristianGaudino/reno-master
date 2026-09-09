@@ -24,6 +24,7 @@ import {
 import { snapPosition } from '../../lib/snapping'
 import { useEditorStore } from '../../store/editorStore'
 import { useViewport } from '../../hooks/useViewport'
+import { VIEW_LABELS } from '../../lib/geometry'
 import { layerOf, inferRuns } from '../../lib/systems'
 import { ObjectShape } from './ObjectShape'
 import { SystemRuns } from './SystemRuns'
@@ -331,8 +332,15 @@ export function Canvas({ findings }: { findings: Finding[] }) {
   return (
     <div ref={containerRef} className="relative min-h-0 flex-1 bg-surface-sunken">
       <svg
-        className="editor-canvas absolute inset-0 size-full"
+        className="editor-canvas absolute inset-0 size-full focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         viewBox={viewBox}
+        // Focusable and described, so the canvas is reachable and its contents
+        // are announced rather than being an opaque rectangle.
+        tabIndex={0}
+        role="application"
+        aria-label={`${VIEW_LABELS[view]} of ${van.label}. ${objects.length} object${
+          objects.length === 1 ? '' : 's'
+        }. Tab to step through them, arrow keys to move the selection.`}
         onWheel={bind.onWheel}
         onPointerDown={onBackgroundPointerDown}
         onPointerMove={onPointerMove}
@@ -446,6 +454,15 @@ export function Canvas({ findings }: { findings: Finding[] }) {
 
         {view === 'top' && <CutHeightBadge cutHeight={cutHeight} bounds={bounds} />}
       </svg>
+
+      {/* Read out when the selection changes, for anyone not looking at it. */}
+      <p aria-live="polite" className="sr-only">
+        {selectedIds.length === 0
+          ? 'Nothing selected'
+          : selectedIds.length === 1
+            ? `Selected ${objects.find((object) => object.id === selectedIds[0])?.name ?? ''}`
+            : `${selectedIds.length} objects selected`}
+      </p>
     </div>
   )
 }

@@ -15,7 +15,9 @@ import { useState } from 'react'
 import type { Mm, ObstacleOverride, UnitSystem, VanObstacle } from '../../lib/definitions'
 import { CONFIDENCE_EXPLANATIONS } from '../../lib/constants'
 import { formatLength, formatMass, massUnitLabel, parseMass } from '../../lib/units'
-import { Button, ConfidenceBadge, Modal, NumberField, Panel } from '../ui'
+import { useVanModels } from '../../lib/api/queries'
+import { vanModelLabel } from '../../lib/vans'
+import { Button, ConfidenceBadge, Modal, NumberField, Panel, Select } from '../ui'
 import { useEditorStore } from '../../store/editorStore'
 
 const OBSTACLE_LABELS: Record<VanObstacle['kind'], string> = {
@@ -42,6 +44,7 @@ export function VanDimensionsModal({
   const patchProject = useEditorStore((state) => state.patchProject)
 
   const [showObstacles, setShowObstacles] = useState(false)
+  const vanModels = useVanModels()
 
   if (!project || !van) return null
 
@@ -110,6 +113,36 @@ export function VanDimensionsModal({
             {CONFIDENCE_EXPLANATIONS[van.confidence]}
           </p>
         </div>
+
+        <Panel title="Van" bodyClassName="p-3 space-y-2">
+          <Select
+            label="Model"
+            value={project.vanModelId ?? 'custom'}
+            onChange={(next) =>
+              patchProject({
+                vanModelId: next === 'custom' ? null : next,
+                // Corrections describe the van they were measured on, so they
+                // cannot survive a change of vehicle.
+                overrides: {},
+                ...(next === 'custom' && !project.customInterior
+                  ? { customInterior: { ...van.interior } }
+                  : {}),
+              })
+            }
+            options={[
+              { value: 'custom', label: 'Custom dimensions' },
+              ...(vanModels.data ?? []).map((model) => ({
+                value: model.id,
+                label: vanModelLabel(model),
+              })),
+            ]}
+          />
+          <p className="text-[0.6875rem] leading-snug text-ink-faint">
+            Changing the van clears any corrections you have made here — they
+            described the old one. Your layout stays exactly where it is, and the
+            checks will tell you what no longer fits.
+          </p>
+        </Panel>
 
         <Panel title="Interior" bodyClassName="p-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">

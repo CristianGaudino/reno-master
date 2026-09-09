@@ -29,6 +29,8 @@ import { cn } from '../lib/cn'
 
 type MobileTab = 'catalog' | 'templates' | 'items' | 'properties' | 'checks'
 
+const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+
 export function EditorPage() {
   const { id } = useParams<{ id: string }>()
   const projectQuery = useProjectQuery(id)
@@ -106,6 +108,7 @@ export function EditorPage() {
       project: projectQuery.data.project,
       objects: projectQuery.data.objects,
       vanModel,
+      vanModels: vanModelsQuery.data ?? [],
       settings: settingsQuery.data,
       fromLocal:
         choice.kind === 'local' || choice.kind === 'conflict'
@@ -123,6 +126,7 @@ export function EditorPage() {
     choice,
     hydrate,
     vanModel,
+    vanModelsQuery.data,
     vanModelsReady,
   ])
 
@@ -171,6 +175,35 @@ export function EditorPage() {
         }
       } else if (event.key === 'Escape') {
         store.select([])
+      } else if (event.key === 'Tab') {
+        // Step through the objects. Without this the canvas is reachable by
+        // keyboard but nothing inside it is.
+        event.preventDefault()
+        store.selectNext(event.shiftKey ? -1 : 1)
+      } else if (ARROW_KEYS.has(event.key)) {
+        if (store.selectedIds.length === 0) return
+        event.preventDefault()
+
+        // Grid by default, a single millimetre with Alt for the last little
+        // bit, ten grid steps with Shift for crossing the van.
+        const grid = store.settings.gridMm
+        const amount = event.altKey ? 1 : event.shiftKey ? grid * 10 : grid
+
+        // In plan the arrows move across and along; in an elevation the
+        // vertical arrows move height instead, matching what is on screen.
+        const vertical = store.view === 'top' ? 'y' : 'z'
+        const verticalSign = store.view === 'top' ? 1 : -1
+
+        const delta =
+          event.key === 'ArrowLeft'
+            ? { x: -amount }
+            : event.key === 'ArrowRight'
+              ? { x: amount }
+              : event.key === 'ArrowUp'
+                ? { [vertical]: -amount * verticalSign }
+                : { [vertical]: amount * verticalSign }
+
+        store.nudgeSelection(delta)
       }
     }
 
@@ -190,11 +223,20 @@ export function EditorPage() {
         project: refetched.data.project,
         objects: refetched.data.objects,
         vanModel,
+        vanModels: vanModelsQuery.data ?? [],
         settings: settingsQuery.data,
         fromLocal: null,
       })
     }
-  }, [hydrate, id, localSceneQuery, projectQuery, settingsQuery.data, vanModel])
+  }, [
+    hydrate,
+    id,
+    localSceneQuery,
+    projectQuery,
+    settingsQuery.data,
+    vanModel,
+    vanModelsQuery.data,
+  ])
 
   const unitSystem = settings.unitSystem
   const wide = useMediaQuery(XL_QUERY)

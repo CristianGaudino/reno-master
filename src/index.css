@@ -78,6 +78,19 @@
   }
 }
 
+/* Visible to assistive technology, not on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /*
  * The canvas must not pan the page when a drag runs off the edge of an object,
  * and text selection during a drag makes the whole thing feel broken.

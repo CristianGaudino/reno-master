@@ -1,5 +1,5 @@
 /**
- * Weight and axle load.
+ * Weight, axle load and what it all costs.
  *
  * Overloading is a safety and legal problem, and it is invisible until a
  * weighbridge tells you — so the numbers get their own always-visible panel
@@ -10,7 +10,7 @@ import { useMemo } from 'react'
 import type { UnitSystem } from '../../lib/definitions'
 import { buildContext } from '../../lib/rules'
 import { summariseLoad } from '../../lib/rules/weight/load'
-import { formatMass } from '../../lib/units'
+import { formatCost, formatMass } from '../../lib/units'
 import { cn } from '../../lib/cn'
 import { Panel } from '../ui'
 import { useEditorStore } from '../../store/editorStore'
@@ -30,6 +30,13 @@ export function WeightPanel({
     if (!van) return null
     return summariseLoad(buildContext(van, objects, settings))
   }, [van, objects, settings])
+
+  // Every catalog item already carries a cost and every object stores one; the
+  // total was the only thing missing to make it useful.
+  const cost = useMemo(
+    () => objects.reduce((sum, object) => sum + object.cost, 0),
+    [objects],
+  )
 
   if (!van || !load) return null
 
@@ -71,6 +78,21 @@ export function WeightPanel({
             : `${formatMass(remaining, unitSystem)} left for water, gear and passengers`}
         </p>
       </div>
+
+      {cost > 0 && (
+        <div className="border-t border-border pt-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs text-ink-muted">Rough cost</span>
+            <span className="text-sm font-medium text-ink tabular-nums">
+              {formatCost(cost)}
+            </span>
+          </div>
+          <p className="mt-1 text-[0.6875rem] leading-snug text-ink-faint">
+            Catalog prices for the pieces in the van. Not a quote — no timber,
+            fixings, wiring or labour, and nothing you have priced yourself.
+          </p>
+        </div>
+      )}
 
       {van.rearAxleY > van.frontAxleY && (
         <div className="space-y-1.5 border-t border-border pt-3">
