@@ -34,7 +34,7 @@ build.
 | Frontend | Vite 8 + React 19 SPA, TypeScript strict, React Router 8 |
 | Editor state | Zustand, with command-pattern undo/redo |
 | Server state | TanStack Query |
-| API | Hono, bundled to a single Vercel serverless function |
+| API | Hono, one Vercel serverless function (`api/index.ts`) |
 | Database | Neon Postgres via Drizzle ORM (HTTP driver) |
 | Styling | Tailwind v4 |
 | Tests | Vitest over the geometry and rules layers |
@@ -60,7 +60,7 @@ as production.
 | `npm test` | Vitest — geometry, units, rules, systems, templates |
 | `npm run typecheck` | Both TS programs (client and server) |
 | `npm run lint` | ESLint, including the server-only import guard |
-| `npm run build` | Typecheck, build the SPA, bundle the API function |
+| `npm run build` | Typecheck and build the SPA; Vercel compiles the API entry itself |
 | `npm run db:generate` | Generate a migration from the schema |
 | `npm run db:seed` | Re-seed the van presets (idempotent) |
 | `npm run test:e2e` | Playwright, against the running app and a real database |
@@ -84,7 +84,12 @@ src/lib/
 src/components/  ui primitives, editor, projects
 src/store/       editorStore, history, localStore (IndexedDB), syncEngine
 server/          Hono app — the only importer of data.ts and actions/
+api/index.ts     Vercel entry; committed, because functions are discovered
+                 from the repository rather than from build output
 ```
+
+Everything under `server/` uses relative imports rather than the `@/` alias:
+Vercel compiles the entry itself and does not reliably honour tsconfig paths.
 
 **Server-only code is enforced, not just documented.** An ESLint rule fails the
 build if anything under `components/`, `routes/` or `store/` imports `lib/data`,
