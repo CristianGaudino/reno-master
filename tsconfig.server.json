@@ -19,6 +19,8 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": [
+    "e2e",
+    "playwright.config.ts",
     "server",
     "scripts",
     "drizzle.config.ts",

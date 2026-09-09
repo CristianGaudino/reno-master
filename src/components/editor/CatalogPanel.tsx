@@ -24,6 +24,12 @@ import { cn } from '../../lib/cn'
 import { Panel, TextInput } from '../ui'
 import { useEditorStore } from '../../store/editorStore'
 
+/** Worktop height, matching the templates' own anchor. */
+const WORKTOP_HEIGHT_MM = 900
+
+/** Height an overhead locker hangs at. */
+const OVERHEAD_HEIGHT_MM = 1350
+
 export function CatalogPanel({
   unitSystem,
   className,
@@ -212,6 +218,12 @@ function findFreeSpot(item: CatalogItem, van: ResolvedVan, objects: VanObject[])
         { z: archTop, fromRear: false },
       ]
 
+  // Things that mount at a height get offered it first. The floor passes stay
+  // as the fallback, so a locker in a van with no room overhead still lands
+  // somewhere rather than nowhere.
+  const mounted = mountHeight(item, van)
+  if (mounted !== null) passes.unshift({ z: mounted, fromRear: false })
+
   for (const pass of passes) {
     const { z } = pass
     const walls = narrowestXRangeBetween(z, z + item.size.h, van.interior.w, van.taper)
@@ -268,4 +280,23 @@ function clearWidthBetweenArches(
   }
 
   return Math.max(0, rightEdge - leftEdge)
+}
+
+/**
+ * The height a catalog item mounts at, if it has one.
+ *
+ * Deliberately the same vocabulary the templates use, so "overhead" means the
+ * same thing whether a locker arrives by template or by clicking the catalog.
+ */
+function mountHeight(item: CatalogItem, van: ResolvedVan): number | null {
+  switch (item.mount) {
+    case 'worktop':
+      return WORKTOP_HEIGHT_MM
+    case 'overhead':
+      return OVERHEAD_HEIGHT_MM
+    case 'roof':
+      return Math.max(0, van.interior.h - item.size.h)
+    default:
+      return null
+  }
 }

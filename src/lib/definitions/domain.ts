@@ -178,6 +178,14 @@ export interface CatalogItem {
     zOffsetMin: Mm
     zOffsetMax: Mm
   }
+  /**
+   * Where this thing normally lives.
+   *
+   * An overhead locker dropped on the floor is not wrong so much as silly, and
+   * the user has to drag it up before the layout means anything. Placement tries
+   * this height first and falls back to the floor if it will not fit.
+   */
+  mount?: 'floor' | 'worktop' | 'overhead' | 'roof'
   description?: string
 }
 

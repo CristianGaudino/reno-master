@@ -3,6 +3,12 @@
 /.pnp
 .pnp.js
 
+# playwright
+/test-results
+/playwright-report
+/blob-report
+/.playwright
+
 # build output
 /dist
 /build

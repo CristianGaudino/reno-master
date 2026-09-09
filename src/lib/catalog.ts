@@ -139,6 +139,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'two-burner-hob',
+    mount: 'worktop',
     name: 'Two-burner hob',
     category: 'kitchen',
     kind: 'fixed',
@@ -149,6 +150,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'sink-unit',
+    mount: 'worktop',
     name: 'Sink',
     category: 'kitchen',
     kind: 'fixed',
@@ -159,6 +161,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'overhead-locker',
+    mount: 'overhead',
     name: 'Overhead locker',
     category: 'kitchen',
     kind: 'articulated',
@@ -346,6 +349,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'roof-fan',
+    mount: 'roof',
     name: 'Roof fan',
     category: 'utility',
     kind: 'fixed',
@@ -392,6 +396,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'solar-controller',
+    mount: 'overhead',
     name: 'Solar controller',
     category: 'electrical',
     kind: 'fixed',
@@ -402,6 +407,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     slug: 'fuse-panel',
+    mount: 'overhead',
     name: 'Distribution panel',
     category: 'electrical',
     kind: 'fixed',

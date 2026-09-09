@@ -257,6 +257,68 @@ for display.
 
 ---
 
+## 12. Insulation, framing and the finished shell (planned)
+
+Every dimension in section 3 describes the **bare shell** — metal to metal. Nobody
+lives in a bare shell. Between the metal and the finished wall there is framing,
+insulation, a vapour barrier and a lining, and by the time all four are on you can
+easily have lost 40–60mm per side, more with thick board. That is enough to turn a
+bed that fits into a bed that does not, which makes it exactly the kind of error
+this tool exists to catch.
+
+So the app should work this out rather than leaving the user to subtract it in
+their head.
+
+### What the user picks
+
+- **Insulation type and thickness** — PIR/polyiso board, XPS, sheep wool,
+  Thinsulate, closed-cell spray foam, or none. Each has a different practical
+  thickness, a different R-value per millimetre, and different rules about what it
+  can sit against.
+- **Framing** — timber battens, steel top hat, foam-and-adhesive with no framing
+  at all, or the van's own ribs. Framing usually sets the depth, not the
+  insulation: 25mm battens with 25mm board is one wall build-up, 50mm board
+  squeezed between 25mm battens is another.
+- **Lining** — ply, cladding, carpet, and its thickness.
+- Applied separately to **walls, ceiling and floor**, because almost nobody uses
+  the same build-up for all three. Floors are usually thinner and stiffer;
+  ceilings often thicker.
+
+### What the app derives
+
+- **Finished interior dimensions**, which become what the editor draws and what
+  every rule measures against. The shell dimensions stay in the model underneath —
+  they are what the van actually is — but the usable box is the finished one.
+- **Floor height**, which raises everything standing on it and eats headroom.
+- **Total build-up weight**, into the payload and axle figures. Insulation and ply
+  are not weightless and people routinely forget them.
+- **Approximate R-value / U-value per surface**, so the choice can be compared on
+  something other than thickness. Worth being careful here: a headline R-value
+  means little next to thermal bridging through the framing, and the app should
+  say so rather than implying a warm van.
+- **Rough material quantity** — board area, batten length, ply sheets. Not a cut
+  list (that stays out of scope), just enough to price the decision.
+
+### Consequences worth designing for
+
+- The **wall taper** already in the model applies to the shell. Insulation follows
+  the curve, so the finished profile is the shell profile inset by the build-up —
+  which means the taper has to be transformable, not just a fixed lookup.
+- **Wheel arches** are usually boxed rather than insulated to full depth, so they
+  need their own build-up, or an explicit exemption.
+- Switching insulation type on an existing layout will make things stop fitting.
+  That is the feature working, but it needs to read as a *consequence of a choice*
+  rather than the tool breaking someone's build — the rules engine should say
+  which objects no longer fit and by how much.
+
+### Sequencing note
+
+This wants the accurate shell dimensions discussed in section 3 to land first.
+Insulation subtracted from a figure that is itself a guess compounds two errors and
+presents the result with more confidence than either deserves.
+
+---
+
 ## Build order
 
 1. Object model with full 3D bounds and units handling — get this right first,
@@ -272,3 +334,4 @@ for display.
 9. Layers
 10. Templates
 11. Systems connection points
+12. Insulation, framing and the finished shell — after accurate shell dimensions
